@@ -2,7 +2,7 @@ import logging
 import os
 
 import functions_framework
-from flask import Response, abort, jsonify
+from flask import abort, jsonify
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -27,15 +27,17 @@ def get_elevations(request):
     if request.method != "POST":
         return abort(405)
 
-    cells = request.get_json()["h3_cells"]
+    cells = set(request.get_json()["h3_cells"])
     logger.info("Received request for elevations at the H3 cells: %r.", cells)
-    elevations = get_elevations_from_database(cells)
 
-    if not elevations:
-        populate_database(cells)
-        return Response(status=202)
+    available_elevations = get_elevations_from_database(cells)
+    missing_cells = cells - available_elevations.keys()
 
-    return jsonify({"elevations": elevations})
+    if missing_cells:
+        logger.info("Elevations are not in the database for %d cells.", len(missing_cells))
+        populate_database(missing_cells)
+
+    return jsonify({"elevations": available_elevations, "missing": missing_cells})
 
 
 def get_elevations_from_database(cells):
@@ -55,6 +57,6 @@ def get_elevations_from_database(cells):
 
 
 def populate_database(cells):
-    logger.info("Requesting database population.")
+    logger.info("Requesting database population for %d cells.", len(cells))
     service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
     service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": cells})
