@@ -34,10 +34,9 @@ def get_elevations(request):
     missing_cells = cells - available_elevations.keys()
 
     if missing_cells:
-        logger.info("Elevations are not in the database for %d cells.", len(missing_cells))
         populate_database(missing_cells)
 
-    return jsonify({"elevations": available_elevations, "missing": missing_cells})
+    return jsonify({"elevations": available_elevations, "later": list(missing_cells)})
 
 
 def get_elevations_from_database(cells):
@@ -52,8 +51,9 @@ def get_elevations_from_database(cells):
 
     with driver:
         with driver.session(database=DATABASE_NAME) as session:
-            result = session.run(query)
-            return dict(result.values())
+            result = dict(session.run(query).values())
+            logger.info("Found %d of %d elevations in the database.", len(result), len(cells))
+            return result
 
 
 def populate_database(cells):
