@@ -49,4 +49,4 @@ jobs:
           region: europe-west1
           service_account_email: github-actions@windeurope72-private.iam.gserviceaccount.com
           source_dir: elevations_api
-          entrypoint: get_elevations
+          entry_point: get_elevations
