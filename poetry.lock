@@ -795,6 +795,24 @@ files = [
 ]
 
 [[package]]
+name = "neo4j"
+version = "5.7.0"
+description = "Neo4j Bolt driver for Python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "neo4j-5.7.0.tar.gz", hash = "sha256:bf5acb70d25abc7b49261ac503fd3eb513d61d9df1a46657f5c1727a4b30f041"},
+]
+
+[package.dependencies]
+pytz = "*"
+
+[package.extras]
+numpy = ["numpy (>=1.7.0,<2.0.0)"]
+pandas = ["numpy (>=1.7.0,<2.0.0)", "pandas (>=1.1.0,<2.0.0)"]
+
+[[package]]
 name = "nodeenv"
 version = "1.7.0"
 description = "Node.js virtual environment builder"
@@ -1041,6 +1059,18 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "pytz"
+version = "2023.3"
+description = "World timezone definitions, modern and historical"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytz-2023.3-py2.py3-none-any.whl", hash = "sha256:a151b3abb88eda1d4e34a9814df37de2a80e301e68ba0fd856fb9b46bfbbbffb"},
+    {file = "pytz-2023.3.tar.gz", hash = "sha256:1d8ce29db189191fb55338ee6d0387d82ab59f3d00eac103412d64e0ebd0c588"},
+]
+
+[[package]]
 name = "pyyaml"
 version = "6.0"
 description = "YAML parser and emitter for Python"
@@ -1271,4 +1301,4 @@ watchdog = ["watchdog"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "763bd640a23225bd272a0a67c97e0da271f28fb7e5f35af8fb65cbbc9974f32f"
+content-hash = "6b381d12e72d9416d8999e163bc7b18922ed3fd360fe67e98863737fadc7ed8f"
