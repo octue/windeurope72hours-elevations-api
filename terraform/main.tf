@@ -91,6 +91,17 @@ resource "google_project_service" "cloud_functions" {
 }
 
 
+resource "google_project_service" "cloud_build" {
+  project = var.project
+  service = "cloudbuild.googleapis.com"
+
+  timeouts {
+    create = "30m"
+    update = "40m"
+  }
+}
+
+
 provider "google" {
   credentials = file(var.credentials_file)
   project     = var.project
