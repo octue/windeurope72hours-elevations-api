@@ -36,11 +36,12 @@ def get_elevations(request):
     if missing_cells:
         populate_database(missing_cells)
 
+    logger.info("Sending response.")
     return jsonify({"elevations": available_elevations, "later": list(missing_cells)})
 
 
 def get_elevations_from_database(cells):
-    logger.info("Checking database for elevation data.")
+    logger.info("Checking database for elevation data...")
     indexes = " or ".join(f"c.index = {cell}" for cell in cells)
 
     query = f"""
@@ -59,4 +60,4 @@ def get_elevations_from_database(cells):
 def populate_database(cells):
     logger.info("Requesting database population for %d cells.", len(cells))
     service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
-    service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": cells})
+    service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": list(cells)})
