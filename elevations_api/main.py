@@ -1,7 +1,7 @@
 import logging
 
 import functions_framework
-from flask import abort
+from flask import abort, jsonify
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
 
@@ -27,7 +27,7 @@ def get_elevations(request):
         service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID)
         return 202
 
-    return elevations, 200
+    return jsonify({"elevations": elevations})
 
 
 def get_elevations_from_database(cells):
