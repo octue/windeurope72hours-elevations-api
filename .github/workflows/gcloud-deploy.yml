@@ -24,7 +24,7 @@ jobs:
             echo "name_prefix=test-" >> $GITHUB_OUTPUT
           fi
 
-  deploy-ingress-eu:
+  deploy-api:
     permissions:
       contents: "read"
       id-token: "write"
