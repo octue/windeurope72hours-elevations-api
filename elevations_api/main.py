@@ -1,7 +1,7 @@
 import logging
 
 import functions_framework
-from flask import abort, jsonify
+from flask import Response, abort, jsonify
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
 
@@ -23,12 +23,17 @@ def get_elevations(request):
     elevations = get_elevations_from_database(cells)
 
     if not elevations:
-        service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
-        service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID)
-        return 202
+        populate_database(cells)
+        return Response(status=202)
 
     return jsonify({"elevations": elevations})
 
 
 def get_elevations_from_database(cells):
     pass
+
+
+def populate_database(cells):
+    logger.info("Requesting database population.")
+    service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
+    service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": cells})
