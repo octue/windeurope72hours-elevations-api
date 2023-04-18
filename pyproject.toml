@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "windeurope72-elevations-api-private"
+version = "0.1.0"
+description = ""
+authors = ["Marcus Lugg <marcus@octue.com>"]
+readme = "README.md"
+packages = [{include = "elevations_api"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+functions-framework = "^3.3.0"
+octue = "^0.46.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
