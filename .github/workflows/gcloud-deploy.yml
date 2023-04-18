@@ -42,7 +42,7 @@ jobs:
 
       - uses: google-github-actions/deploy-cloud-functions@v0
         with:
-          name: ${{ needs.get-prefix.outputs.name_prefix }}ingress-eu
+          name: ${{ needs.get-prefix.outputs.name_prefix }}elevations-api
           runtime: python310
           env_vars: COMPUTE_PROVIDER=GOOGLE_CLOUD_FUNCTION
           memory_mb: 1024
