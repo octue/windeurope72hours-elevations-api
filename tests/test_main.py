@@ -55,4 +55,24 @@ class TestMain(unittest.TestCase):
         response = mock_jsonify.call_args.args[0]
         self.assertEqual(response["elevations"], {})
         self.assertEqual(response["later"], [1, 2])
-        mock_populate_database.assert_called()
+        mock_populate_database.assert_called_with({1, 2})
+
+    def test_some_cells_unavailable(self):
+        """Test that, when some of the input cells have their elevations in the database, database population is
+        requested for those that don't and the response contains an elevations list for those that were available and a
+        `later` list of the input cells that weren't.
+        """
+        input = {"h3_cells": [1, 2, 3, 4]}
+        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        mock_elevations = {1: 32.1, 2: 59}
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                # Mock `jsonify` to avoid needing Flask app context or test app.
+                with patch("elevations_api.main.jsonify") as mock_jsonify:
+                    get_or_request_elevations(request)
+
+        response = mock_jsonify.call_args.args[0]
+        self.assertEqual(response["elevations"], mock_elevations)
+        self.assertEqual(response["later"], [3, 4])
+        mock_populate_database.assert_called_with({3, 4})
