@@ -16,8 +16,8 @@ driver = GraphDatabase.driver(
     auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
 )
 
-POPULATION_WAIT_TIME = 240  # 4 minutes.
-recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=POPULATION_WAIT_TIME)
+DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
+recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=DATABASE_POPULATION_WAIT_TIME)
 
 
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
@@ -26,7 +26,7 @@ DATABASE_NAME = "neo4j"
 
 
 @functions_framework.http
-def get_elevations(request):
+def get_or_request_elevations(request):
     if request.method != "POST":
         return abort(405)
 
@@ -42,25 +42,19 @@ def get_elevations(request):
         _populate_database(cells_to_populate)
 
     if not unavailable_cells:
-        instructions = {}
+        later = {}
     else:
-        instructions = {
+        later = {
+            "later": list(unavailable_cells),
             "instructions": (
-                "The elevations present in the `elevations` field were available when you made your request. The cell "
-                "indexes in the `later` field were unavailable at that time but their elevations are now being added to"
-                f"the database - re-request them in {POPULATION_WAIT_TIME}s."
-            )
+                "The elevations present in the `elevations` field were available when you made your request. Elevations "
+                "for the cell indexes in the `later` field were unavailable at that time but their elevations are "
+                f"now being added to the database - please re-request them in {DATABASE_POPULATION_WAIT_TIME}s."
+            ),
         }
 
     logger.info("Sending response.")
-
-    return jsonify(
-        {
-            "elevations": available_cells_and_elevations,
-            "later": list(unavailable_cells),
-            **instructions,
-        }
-    )
+    return jsonify({"elevations": available_cells_and_elevations, **later})
 
 
 def _get_available_elevations_from_database(cells):

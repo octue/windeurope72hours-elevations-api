@@ -54,6 +54,6 @@ jobs:
           region: europe-west1
           service_account_email: elevations-api@windeurope72-private.iam.gserviceaccount.com
           source_dir: elevations_api
-          entry_point: get_elevations
+          entry_point: get_or_request_elevations
           secret_environment_variables: NEO4J_URI=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-uri,NEO4J_USERNAME=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-username,NEO4J_PASSWORD=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-password
           https_trigger_security_level: secure_always
