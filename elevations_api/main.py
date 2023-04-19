@@ -25,6 +25,9 @@ driver = GraphDatabase.driver(
     auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
 )
 
+# A TTL cache is used to avoid sending the same cells to the elevations populator service again before it's had time to
+# process them. This avoids unnecessary computation and duplicate nodes in the database. This isn't a substitute for
+# rate limiting the cloud function.
 recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=DATABASE_POPULATION_WAIT_TIME)
 
 
