@@ -4,6 +4,8 @@ import os
 import functions_framework
 from cachetools import TTLCache
 from flask import jsonify
+from h3 import H3CellError
+from h3.api.basic_int import h3_is_valid
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -46,8 +48,10 @@ def get_or_request_elevations(request):
     requested_cells = set(request.get_json()["h3_cells"])
     logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
 
-    if len(requested_cells) > CELL_LIMIT:
-        return f"Only {CELL_LIMIT} cells can be sent per request.", 400
+    try:
+        _validate_cells(requested_cells)
+    except (ValueError, H3CellError) as error:
+        return str(error), 400
 
     available_cells_and_elevations = _get_available_elevations_from_database(requested_cells)
     unavailable_cells = requested_cells - available_cells_and_elevations.keys()
@@ -72,6 +76,27 @@ def get_or_request_elevations(request):
 
     logger.info("Sending response.")
     return jsonify({"elevations": available_cells_and_elevations, **later})
+
+
+def _validate_cells(cells):
+    """Check that cell indexes correspond to valid H3 cells and that the number of cells doesn't exceed the request
+    limit.
+
+    :param iter(int) cells: the indexes of the cells to validate
+    :raise ValueError: if the cell limit is exceeded
+    :raise h3.H3CellError: if any of the cell indexes are invalid
+    :return None:
+    """
+    if len(cells) > CELL_LIMIT:
+        message = f"Request for {len(cells)} cells rejected - only {CELL_LIMIT} cells can be sent per request."
+        logger.error(message)
+        raise ValueError(message)
+
+    for cell in cells:
+        if not h3_is_valid(cell):
+            message = f"{cell} is not a valid H3 cell - aborting request."
+            logger.error(message)
+            raise H3CellError(message)
 
 
 def _get_available_elevations_from_database(cells):
