@@ -27,6 +27,18 @@ DATABASE_NAME = "neo4j"
 
 @functions_framework.http
 def get_or_request_elevations(request):
+    """For the input H3 cells in the request body that are already in the database, get their elevations; for those that
+    aren't, request that they're added. If any of the input cells were recently requested for database population (i.e.
+    within the database population wait time), they won't be re-requested until the wait time has been exceeded.
+
+    The response to a successful request always contains the available cells mapped to their elevations and, if any cell
+    elevations weren't available at request time, the indexes of these cells and an `instructions` field.
+
+    Note that this endpoint will only accept POST requests.
+
+    :param flask.Request request: the request sent to the Google Cloud Function
+    :return flask.Response: a response containing the cell elevations
+    """
     if request.method != "POST":
         return abort(405)
 
