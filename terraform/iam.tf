@@ -6,7 +6,7 @@
 # which terraform acts ( eg terraform@octue-amy.iam.gserviceaccount.com ) to Google Search Console > Settings > Users
 # and Permissions, with "Owner" level permission.
 
-resource "google_service_account" "operating_service_account" {
+resource "google_service_account" "elevations_populator_service_account" {
   account_id   = "elevations-populator"
   display_name = "elevations-populator"
   description  = "Operate the server"
@@ -34,7 +34,7 @@ resource "google_project_iam_binding" "iam_serviceaccountuser" {
   project = var.project
   role    = "roles/iam.serviceAccountUser"
   members = [
-    "serviceAccount:${google_service_account.operating_service_account.email}",
+    "serviceAccount:${google_service_account.elevations_populator_service_account.email}",
     "serviceAccount:${google_service_account.github_actions_service_account.email}",
   ]
 }
@@ -44,7 +44,7 @@ resource "google_project_iam_binding" "pubsub_editor" {
   project = var.project
   role    = "roles/pubsub.editor"
   members = [
-    "serviceAccount:${google_service_account.operating_service_account.email}",
+    "serviceAccount:${google_service_account.elevations_populator_service_account.email}",
     "serviceAccount:${google_service_account.github_actions_service_account.email}",
     "serviceAccount:${google_service_account.dev_cortadocodes_service_account.email}"
   ]
@@ -58,7 +58,7 @@ resource "google_project_iam_binding" "run_developer" {
   project = var.project
   role    = "roles/run.developer"
   members = [
-    "serviceAccount:${google_service_account.operating_service_account.email}",
+    "serviceAccount:${google_service_account.elevations_populator_service_account.email}",
     "serviceAccount:${google_service_account.github_actions_service_account.email}",
   ]
 }
@@ -77,7 +77,7 @@ resource "google_project_iam_binding" "storage_objectadmin" {
   project = var.project
   role = "roles/storage.objectAdmin"
   members = [
-    "serviceAccount:${google_service_account.operating_service_account.email}",
+    "serviceAccount:${google_service_account.elevations_populator_service_account.email}",
     "serviceAccount:${google_service_account.github_actions_service_account.email}",
     "serviceAccount:${var.project_number}@cloudbuild.gserviceaccount.com",
   ]
@@ -88,7 +88,7 @@ resource "google_project_iam_binding" "errorreporting_writer" {
   project = var.project
   role = "roles/errorreporting.writer"
   members = [
-    "serviceAccount:${google_service_account.operating_service_account.email}",
+    "serviceAccount:${google_service_account.elevations_populator_service_account.email}",
   ]
 }
 
