@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from elevations_api.main import get_or_request_elevations
+from elevations_api.main import _get_available_elevations_from_database, get_or_request_elevations
 
 
 class TestMain(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestMain(unittest.TestCase):
         with patch("elevations_api.main.CELL_LIMIT", cell_limit):
             response = get_or_request_elevations(request)
 
-        self.assertEqual(response, (f"Only {cell_limit} cells can be sent per request.", 400))
+        self.assertEqual(response, ("Request for 2 cells rejected - only 1 cells can be sent per request.", 400))
 
     def test_error_returned_if_cells_are_invalid(self):
         """Test that an error response is returned if invalid H3 cells are requested."""
@@ -83,3 +83,17 @@ class TestMain(unittest.TestCase):
         self.assertEqual(response["elevations"], mock_elevations)
         self.assertEqual(set(response["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
+
+    def test_get_available_elevations_from_database(self):
+        """Test that a correct query is formed when getting elevations from the database."""
+        with patch("neo4j._sync.driver.Session") as mock_session:
+            _get_available_elevations_from_database({630949280935159295, 630949280220393983})
+
+        self.assertEqual(
+            mock_session.mock_calls[2][1][0].strip().split("\n"),
+            [
+                "MATCH (c:Cell)-[:HAS_ELEVATION]->(e:Elevation)",
+                "    WHERE c.index = 630949280220393983 or c.index = 630949280935159295",
+                "    RETURN c.index, e.value",
+            ],
+        )
