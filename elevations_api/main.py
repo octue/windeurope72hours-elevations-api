@@ -41,8 +41,26 @@ def get_elevations(request):
         _add_cells_to_ttl_cache(cells_to_populate)
         _populate_database(cells_to_populate)
 
+    if not unavailable_cells:
+        instructions = {}
+    else:
+        instructions = {
+            "instructions": (
+                "The elevations present in the `elevations` field were available when you made your request. The cell "
+                "indexes in the `later` field were unavailable at that time but their elevations are now being added to"
+                f"the database - re-request them in {POPULATION_WAIT_TIME}s."
+            )
+        }
+
     logger.info("Sending response.")
-    return jsonify({"elevations": available_cells_and_elevations, "later": list(unavailable_cells)})
+
+    return jsonify(
+        {
+            "elevations": available_cells_and_elevations,
+            "later": list(unavailable_cells),
+            **instructions,
+        }
+    )
 
 
 def _get_available_elevations_from_database(cells):
