@@ -9,6 +9,13 @@ from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
 
 
+ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
+ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
+DATABASE_NAME = "neo4j"
+DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
+CELL_LIMIT = 1e5
+
+
 logger = logging.getLogger(__name__)
 
 driver = GraphDatabase.driver(
@@ -16,13 +23,7 @@ driver = GraphDatabase.driver(
     auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
 )
 
-DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=DATABASE_POPULATION_WAIT_TIME)
-
-
-ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
-ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
-DATABASE_NAME = "neo4j"
 
 
 @functions_framework.http
@@ -45,6 +46,9 @@ def get_or_request_elevations(request):
     requested_cells = set(request.get_json()["h3_cells"])
     logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
 
+    if len(requested_cells) > CELL_LIMIT:
+        return f"Only {CELL_LIMIT} cells can be sent per request.", 400
+
     available_cells_and_elevations = _get_available_elevations_from_database(requested_cells)
     unavailable_cells = requested_cells - available_cells_and_elevations.keys()
     cells_to_populate = _extract_cells_to_populate(unavailable_cells)
@@ -59,9 +63,10 @@ def get_or_request_elevations(request):
         later = {
             "later": list(unavailable_cells),
             "instructions": (
-                "The elevations present in the `elevations` field were available when you made your request. Elevations "
-                "for the cell indexes in the `later` field were unavailable at that time but their elevations are "
-                f"now being added to the database - please re-request them in {DATABASE_POPULATION_WAIT_TIME}s."
+                "The elevations present in the `elevations` field were available when you made your request. "
+                "Elevations for the cell indexes in the `later` field were unavailable at that time but their "
+                "elevations are now being added to the database - please re-request them in "
+                f"{DATABASE_POPULATION_WAIT_TIME}s."
             ),
         }
 
