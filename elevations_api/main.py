@@ -16,7 +16,8 @@ driver = GraphDatabase.driver(
     auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
 )
 
-recently_requested_for_population_cache = TTLCache(maxsize=1024, ttl=240)
+POPULATION_WAIT_TIME = 240  # 4 minutes.
+recently_requested_for_population_cache = TTLCache(maxsize=1024, ttl=POPULATION_WAIT_TIME)
 
 
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
@@ -29,23 +30,20 @@ def get_elevations(request):
     if request.method != "POST":
         return abort(405)
 
-    cells = set(request.get_json()["h3_cells"])
-    logger.info("Received request for elevations at the H3 cells: %r.", cells)
+    requested_cells = set(request.get_json()["h3_cells"])
+    logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
 
-    available_elevations = _get_elevations_from_database(cells)
+    available_cells_and_elevations = _get_elevations_from_database(requested_cells)
+    unavailable_cells = requested_cells - available_cells_and_elevations.keys()
 
-    missing_cells = cells - available_elevations.keys()
-    waiting_cells = missing_cells & recently_requested_for_population_cache.keys()
-    logger.info("Still waiting for %d cells to be populated in database.", len(waiting_cells))
-
-    cells_to_populate = missing_cells - recently_requested_for_population_cache.keys()
+    cells_to_populate, cells_to_await = _split_cells_to_populate_from_cells_to_await(unavailable_cells)
 
     if cells_to_populate:
         recently_requested_for_population_cache.update((cell, None) for cell in cells_to_populate)
         _populate_database(cells_to_populate)
 
     logger.info("Sending response.")
-    return jsonify({"elevations": available_elevations, "later": [*missing_cells, *waiting_cells]})
+    return jsonify({"elevations": available_cells_and_elevations, "later": list(unavailable_cells)})
 
 
 def _get_elevations_from_database(cells):
@@ -63,6 +61,13 @@ def _get_elevations_from_database(cells):
             result = dict(session.run(query).values())
             logger.info("Found %d of %d elevations in the database.", len(result), len(cells))
             return result
+
+
+def _split_cells_to_populate_from_cells_to_await(unavailable_cells):
+    cells_to_await = unavailable_cells & recently_requested_for_population_cache.keys()
+    logger.info("Still waiting for %d cells to be populated in database.", len(cells_to_await))
+    cells_to_populate = unavailable_cells - cells_to_await
+    return cells_to_populate, cells_to_await
 
 
 def _populate_database(cells):
