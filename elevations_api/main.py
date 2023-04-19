@@ -35,8 +35,7 @@ def get_elevations(request):
 
     available_cells_and_elevations = _get_elevations_from_database(requested_cells)
     unavailable_cells = requested_cells - available_cells_and_elevations.keys()
-
-    cells_to_populate, cells_to_await = _split_cells_to_populate_from_cells_to_await(unavailable_cells)
+    cells_to_populate = _extract_cells_to_populate(unavailable_cells)
 
     if cells_to_populate:
         _add_cells_to_ttl_cache(cells_to_populate)
@@ -63,11 +62,11 @@ def _get_elevations_from_database(cells):
             return result
 
 
-def _split_cells_to_populate_from_cells_to_await(unavailable_cells):
+def _extract_cells_to_populate(unavailable_cells):
     cells_to_await = unavailable_cells & recently_requested_for_population_cache.keys()
     logger.info("Still waiting for %d cells to be populated in database.", len(cells_to_await))
     cells_to_populate = unavailable_cells - cells_to_await
-    return cells_to_populate, cells_to_await
+    return cells_to_populate
 
 
 def _add_cells_to_ttl_cache(cells):
