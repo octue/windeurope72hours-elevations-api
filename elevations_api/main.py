@@ -2,6 +2,7 @@ import logging
 import os
 
 import functions_framework
+from cachetools import TTLCache
 from flask import abort, jsonify
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
@@ -10,16 +11,17 @@ from octue.resources.service_backends import GCPPubSubBackend
 
 logger = logging.getLogger(__name__)
 
-
-ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
-ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
-DATABASE_NAME = "neo4j"
-
-
 driver = GraphDatabase.driver(
     uri=os.environ["NEO4J_URI"],
     auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
 )
+
+recently_requested_for_population_cache = TTLCache(maxsize=1024, ttl=240)
+
+
+ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
+ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
+DATABASE_NAME = "neo4j"
 
 
 @functions_framework.http
@@ -31,13 +33,19 @@ def get_elevations(request):
     logger.info("Received request for elevations at the H3 cells: %r.", cells)
 
     available_elevations = _get_elevations_from_database(cells)
-    missing_cells = cells - available_elevations.keys()
 
-    if missing_cells:
-        _populate_database(missing_cells)
+    missing_cells = cells - available_elevations.keys()
+    waiting_cells = missing_cells & recently_requested_for_population_cache.keys()
+    logger.info("Still waiting for %d cells to be populated in database.", len(waiting_cells))
+
+    cells_to_populate = missing_cells - recently_requested_for_population_cache.keys()
+
+    if cells_to_populate:
+        recently_requested_for_population_cache.update((cell, None) for cell in cells_to_populate)
+        _populate_database(cells_to_populate)
 
     logger.info("Sending response.")
-    return jsonify({"elevations": available_elevations, "later": list(missing_cells)})
+    return jsonify({"elevations": available_elevations, "later": [*missing_cells, *waiting_cells]})
 
 
 def _get_elevations_from_database(cells):
