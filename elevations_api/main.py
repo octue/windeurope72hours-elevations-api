@@ -30,17 +30,17 @@ def get_elevations(request):
     cells = set(request.get_json()["h3_cells"])
     logger.info("Received request for elevations at the H3 cells: %r.", cells)
 
-    available_elevations = get_elevations_from_database(cells)
+    available_elevations = _get_elevations_from_database(cells)
     missing_cells = cells - available_elevations.keys()
 
     if missing_cells:
-        populate_database(missing_cells)
+        _populate_database(missing_cells)
 
     logger.info("Sending response.")
     return jsonify({"elevations": available_elevations, "later": list(missing_cells)})
 
 
-def get_elevations_from_database(cells):
+def _get_elevations_from_database(cells):
     logger.info("Checking database for elevation data...")
     indexes = " or ".join(f"c.index = {cell}" for cell in cells)
 
@@ -57,7 +57,7 @@ def get_elevations_from_database(cells):
             return result
 
 
-def populate_database(cells):
+def _populate_database(cells):
     logger.info("Requesting database population for %d cells.", len(cells))
     service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
     service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": list(cells)})
