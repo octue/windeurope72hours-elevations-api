@@ -3,7 +3,7 @@ import os
 
 import functions_framework
 from cachetools import TTLCache
-from flask import abort, jsonify
+from flask import jsonify
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -41,7 +41,7 @@ def get_or_request_elevations(request):
     :return flask.Response: a response containing the cell elevations
     """
     if request.method != "POST":
-        return abort(405)
+        return "This endpoint only accepts POST requests.", 405
 
     requested_cells = set(request.get_json()["h3_cells"])
     logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
