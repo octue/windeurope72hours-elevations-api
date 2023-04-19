@@ -9,7 +9,15 @@
 resource "google_service_account" "elevations_populator_service_account" {
   account_id   = "elevations-populator"
   display_name = "elevations-populator"
-  description  = "Operate the server"
+  description  = "Operate the elevations populator Cloud Run service."
+  project      = var.project
+}
+
+
+resource "google_service_account" "elevations_api_service_account" {
+  account_id   = "elevations-api"
+  display_name = "elevations-api"
+  description  = "Operate the elevations API Cloud Function."
   project      = var.project
 }
 
@@ -98,6 +106,15 @@ resource "google_project_iam_binding" "cloudfunctions_admin" {
   role = "roles/cloudfunctions.admin"
   members = [
     "serviceAccount:${google_service_account.github_actions_service_account.email}",
+  ]
+}
+
+
+resource "google_project_iam_binding" "secretmanager_secretaccessor" {
+  project = var.project
+  role = "roles/secretmanager.secretAccessor"
+  members = [
+    "serviceAccount:${google_service_account.elevations_api_service_account.email}",
   ]
 }
 
