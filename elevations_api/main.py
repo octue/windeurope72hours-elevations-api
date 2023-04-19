@@ -17,6 +17,9 @@ DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 CELL_LIMIT = 1e5
 
+SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations/0.2.0.json"
+SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations"
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,21 +67,23 @@ def get_or_request_elevations(request):
         _add_cells_to_ttl_cache(cells_to_populate)
         _populate_database(cells_to_populate)
 
-    if not unavailable_cells:
-        later = {}
-    else:
+    if unavailable_cells:
         later = {
             "later": list(unavailable_cells),
-            "instructions": (
-                "The elevations present in the `elevations` field were available when you made your request. "
-                "Elevations for the cell indexes in the `later` field were unavailable at that time but their "
-                "elevations are now being added to the database - please re-request them in "
-                f"{DATABASE_POPULATION_WAIT_TIME}s."
-            ),
+            "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
         }
+    else:
+        later = {}
 
     logger.info("Sending response.")
-    return jsonify({"elevations": available_cells_and_elevations, **later})
+
+    return jsonify(
+        {
+            "schema_uri": SCHEMA_URI,
+            "schema_info": SCHEMA_INFO_URL,
+            "data": {"elevations": available_cells_and_elevations, **later},
+        }
+    )
 
 
 def _validate_cells(cells):

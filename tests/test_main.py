@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from elevations_api.main import _get_available_elevations_from_database, get_or_request_elevations
+from elevations_api.main import (
+    SCHEMA_INFO_URL,
+    SCHEMA_URI,
+    _get_available_elevations_from_database,
+    get_or_request_elevations,
+)
 
 
 class TestMain(unittest.TestCase):
@@ -43,7 +48,10 @@ class TestMain(unittest.TestCase):
                 with patch("elevations_api.main.jsonify") as mock_jsonify:
                     get_or_request_elevations(request)
 
-        mock_jsonify.assert_called_with({"elevations": mock_elevations})
+        mock_jsonify.assert_called_with(
+            {"schema_uri": SCHEMA_URI, "schema_info": SCHEMA_INFO_URL, "data": {"elevations": mock_elevations}}
+        )
+
         mock_populate_database.assert_not_called()
 
     def test_all_cells_unavailable(self):
@@ -60,8 +68,8 @@ class TestMain(unittest.TestCase):
                     get_or_request_elevations(request)
 
         response = mock_jsonify.call_args.args[0]
-        self.assertEqual(response["elevations"], {})
-        self.assertEqual(set(response["later"]), {630949280935159295, 630949280220393983})
+        self.assertEqual(response["data"]["elevations"], {})
+        self.assertEqual(set(response["data"]["later"]), {630949280935159295, 630949280220393983})
         mock_populate_database.assert_called_with({630949280935159295, 630949280220393983})
 
     def test_some_cells_unavailable(self):
@@ -80,8 +88,8 @@ class TestMain(unittest.TestCase):
                     get_or_request_elevations(request)
 
         response = mock_jsonify.call_args.args[0]
-        self.assertEqual(response["elevations"], mock_elevations)
-        self.assertEqual(set(response["later"]), {630949280220402687, 630949280220390399})
+        self.assertEqual(response["data"]["elevations"], mock_elevations)
+        self.assertEqual(set(response["data"]["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
 
     def test_get_available_elevations_from_database(self):
