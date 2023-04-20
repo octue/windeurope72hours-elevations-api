@@ -26,7 +26,7 @@ class TestMain(unittest.TestCase):
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         cell_limit = 1
 
-        with patch("elevations_api.main.CELL_LIMIT", cell_limit):
+        with patch("elevations_api.main.SINGLE_REQUEST_CELL_LIMIT", cell_limit):
             response = get_or_request_elevations(request)
 
         self.assertEqual(response, ("Request for 2 cells rejected - only 1 cells can be sent per request.", 400))

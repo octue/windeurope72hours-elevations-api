@@ -5,7 +5,7 @@ import functions_framework
 from cachetools import TTLCache
 from flask import jsonify
 from h3 import H3CellError
-from h3.api.basic_int import h3_is_valid
+from h3.api.basic_int import h3_is_valid, polyfill
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -15,7 +15,7 @@ ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
 ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
-CELL_LIMIT = 1e5
+SINGLE_REQUEST_CELL_LIMIT = 1e5
 
 SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations/0.2.0.json"
 SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations"
@@ -51,11 +51,17 @@ def get_or_request_elevations(request):
     if request.method != "POST":
         return "This endpoint only accepts POST requests.", 405
 
-    requested_cells = set(request.get_json()["h3_cells"])
-    logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
+    data = request.get_json()
+
+    if "h3_cells" not in data and "polygon" not in data:
+        return (
+            "The body must contain a JSON object containing either an 'h3_cells' field or a 'polygon' and 'resolution' "
+            "field.",
+            400,
+        )
 
     try:
-        _validate_cells(requested_cells)
+        requested_cells = _parse_and_validate_data(data)
     except (ValueError, H3CellError) as error:
         return str(error), 400
 
@@ -86,25 +92,61 @@ def get_or_request_elevations(request):
     )
 
 
+def _parse_and_validate_data(data):
+    """Parse and validate the input data. The data must be a dictionary taking one of the following forms:
+    1. An 'h3_cells' key mapped to a list of H3 cells in integer form.
+    2. A 'polygon' key mapped to a list of lat/lng coordinates that define the points of a polygon, and a 'resolution'
+       key mapped to the resolution (an integer) at which to get the H3 cells contained within the polygon.
+
+    :param dict data: the body of the request containing either the key 'h3_cells' or the keys 'polygon' and 'resolution'
+    :return set(int): the cell indexes to get the elevations for
+    """
+    if "h3_cells" in data:
+        requested_cells = set(data["h3_cells"])
+        logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
+        _check_cell_limit_not_exceeded(requested_cells)
+        _validate_cells(requested_cells)
+        return requested_cells
+
+    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [[data["polygon"]]]}, res=data["resolution"])
+    _check_cell_limit_not_exceeded(requested_cells)
+
+    logger.info(
+        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
+        data["resolution"],
+        len(requested_cells),
+    )
+
+    return requested_cells
+
+
 def _validate_cells(cells):
-    """Check that cell indexes correspond to valid H3 cells and that the number of cells doesn't exceed the request
-    limit.
+    """Check that cell indexes correspond to valid H3 cells.
 
     :param iter(int) cells: the indexes of the cells to validate
-    :raise ValueError: if the cell limit is exceeded
     :raise h3.H3CellError: if any of the cell indexes are invalid
     :return None:
     """
-    if len(cells) > CELL_LIMIT:
-        message = f"Request for {len(cells)} cells rejected - only {CELL_LIMIT} cells can be sent per request."
-        logger.error(message)
-        raise ValueError(message)
-
     for cell in cells:
         if not h3_is_valid(cell):
             message = f"{cell} is not a valid H3 cell - aborting request."
             logger.error(message)
             raise H3CellError(message)
+
+
+def _check_cell_limit_not_exceeded(cells):
+    """Check that the number of cells doesn't exceed the cell limit for a single request.
+
+    :param iter(int) cells: the indexes of the cells to validate
+    :raise ValueError: if the cell limit is exceeded
+    :return None:
+    """
+    if len(cells) > SINGLE_REQUEST_CELL_LIMIT:
+        message = (
+            f"Request for {len(cells)} cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request."
+        )
+        logger.error(message)
+        raise ValueError(message)
 
 
 def _get_available_elevations_from_database(cells):
