@@ -32,8 +32,9 @@ driver = GraphDatabase.driver(
 )
 
 # A TTL cache is used to avoid sending the same cells to the elevations populator service again before it's had time to
-# process them. This avoids unnecessary computation and duplicate nodes in the database. This isn't a substitute for
-# rate limiting the cloud function.
+# process them. This avoids unnecessary computation and duplicate nodes in the database. As the database population wait
+# time is less than the alive time for a Cloud Function instance, it's ok to run this cache in instance memory rather
+# than using an external data store like Redis. Note that this isn't a substitute for rate limiting the cloud function.
 recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=DATABASE_POPULATION_WAIT_TIME)
 
 
