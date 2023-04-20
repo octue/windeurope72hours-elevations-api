@@ -87,7 +87,38 @@ Note that data is only accepted via `POST` request.
 
 ## Data
 
-The data served by this API is stored in a Neo4j graph database, which is lazily populated by the [elevations populator
-data service](https://github.com/octue/windeurope72hours-elevations-populator). Elevations for high resolution H3 cells
-are extracted for the cell centerpoints at a 30m resolution; elevations for lower resolution cells are calculated by
-averaging each cell's children's elevations.
+The data served by this API is stored in a Neo4j graph database, which is "lazily" populated by our [elevations popula
+tor data service](https://github.com/octue/windeurope72hours-elevations-populator). We chose this method to reduce the
+up-front cloud computation costs of populating trillions of data points. Once an elevation has been added to the
+database, it is permanently available.
+
+The populator works by extracting elevations of the centerpoints of high resolution H3 cells at a 30m spatial
+resolution; elevations for lower resolution cells are calculated by averaging each cell's immediate children's
+elevations.
+
+**Limitations**
+
+As in the original dataset:
+
+- The elevations of all oceans appear as 0m
+- The elevations of a small number of large bodies of water (e.g. the Caspian Sea) appear as having a constant negative
+  non-zero elevation
+- We are currently only able to provide elevations for H3 cells between resolution 8 and 12. However:
+  - We're likely to be able to decrease the minimum resolution to 6 or below with time
+  - We're unlikely to be able to increase the maximum resolution beyond 12 - with the underlying dataset, it's not
+    possible to provide meaningful elevations for cells with resolutions higher than 12 because they have a higher
+    spatial resolution than the dataset
+
+**Citations**
+
+The underlying dataset we used to provide the elevations is the Copernicus DEM - Global and European Digital Elevation
+Model (COP-DEM) GLO-30 dataset:
+
+- DOI: https://doi.org/10.5270/ESA-c5d3d65
+- Direct link https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
+
+We accessed it via the AWS S3 mirror, which provides easy access to the dataset's GeoTIFF files:
+
+- Information: https://copernicus-dem-30m.s3.amazonaws.com/readme.html
+- URL: https://copernicus-dem-30m.s3.amazonaws.com
+- S3 URI: `s3://copernicus-dem-30m/`
