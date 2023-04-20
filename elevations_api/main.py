@@ -56,7 +56,9 @@ def get_or_request_elevations(request):
     try:
         requested_cells = _parse_and_validate_data(data)
     except (ValueError, H3CellError) as error:
-        return str(error), 400
+        message = str(error)
+        logger.error(message)
+        return message, 400
 
     available_cells_and_elevations = _get_available_elevations_from_database(requested_cells)
     unavailable_cells = requested_cells - available_cells_and_elevations.keys()
@@ -95,13 +97,10 @@ def _parse_and_validate_data(data):
     :return set(int): the cell indexes to get the elevations for
     """
     if "h3_cells" not in data and not ("polygon" in data and "resolution" in data):
-        message = (
+        raise ValueError(
             "The body must be a JSON object containing either an 'h3_cells' field or a 'polygon' and 'resolution' "
             "field."
         )
-
-        logger.error(message)
-        raise ValueError(message)
 
     if "h3_cells" in data:
         requested_cells = set(data["h3_cells"])
@@ -131,9 +130,7 @@ def _validate_cells(cells):
     """
     for cell in cells:
         if not h3_is_valid(cell):
-            message = f"{cell} is not a valid H3 cell - aborting request."
-            logger.error(message)
-            raise H3CellError(message)
+            raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
 
 def _check_cell_limit_not_exceeded(cells):
@@ -144,11 +141,9 @@ def _check_cell_limit_not_exceeded(cells):
     :return None:
     """
     if len(cells) > SINGLE_REQUEST_CELL_LIMIT:
-        message = (
+        raise ValueError(
             f"Request for {len(cells)} cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request."
         )
-        logger.error(message)
-        raise ValueError(message)
 
 
 def _get_available_elevations_from_database(cells):
