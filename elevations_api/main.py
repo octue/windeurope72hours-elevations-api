@@ -5,7 +5,7 @@ import functions_framework
 from cachetools import TTLCache
 from flask import jsonify
 from h3 import H3CellError
-from h3.api.basic_int import geo_to_h3, h3_is_valid, polyfill
+from h3.api.basic_int import geo_to_h3, h3_is_valid, h3_to_geo, polyfill
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -70,10 +70,16 @@ def get_or_request_elevations(request):
         _populate_database(cells_to_populate)
 
     if unavailable_cells:
-        later = {
-            "later": list(unavailable_cells),
-            "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
-        }
+        if "coordinates" in data:
+            later = {
+                "later": [h3_to_geo(cell) for cell in unavailable_cells],
+                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+            }
+        else:
+            later = {
+                "later": list(unavailable_cells),
+                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+            }
     else:
         later = {}
 
