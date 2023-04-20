@@ -22,8 +22,8 @@ class TestMain(unittest.TestCase):
 
     def test_error_returned_if_cell_limit_exceeded(self):
         """Test that an error response is returned if the number of cells in the request exceeds the cell limit."""
-        input = {"h3_cells": [1, 2]}
-        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        data = {"h3_cells": [1, 2]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         cell_limit = 1
 
         with patch("elevations_api.main.CELL_LIMIT", cell_limit):
@@ -33,8 +33,8 @@ class TestMain(unittest.TestCase):
 
     def test_error_returned_if_cells_are_invalid(self):
         """Test that an error response is returned if invalid H3 cells are requested."""
-        input = {"h3_cells": [1, 630949280935159295]}
-        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        data = {"h3_cells": [1, 630949280935159295]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         response = get_or_request_elevations(request)
         self.assertEqual(response, ("1 is not a valid H3 cell - aborting request.", 400))
 
@@ -42,8 +42,8 @@ class TestMain(unittest.TestCase):
         """Test that, when all the input cells already have elevations in the database, database population is not
         requested and the response just contains their elevations.
         """
-        input = {"h3_cells": [630949280935159295, 630949280220393983]}
-        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        data = {"h3_cells": [630949280935159295, 630949280220393983]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         mock_elevations = {630949280935159295: 32.1, 630949280220393983: 59}
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
@@ -62,8 +62,8 @@ class TestMain(unittest.TestCase):
         """Test that, when all the input cells don't have elevations in the database, database population is requested
         and the response contains an empty elevations list and a `later` list of the input cells.
         """
-        input = {"h3_cells": [630949280935159295, 630949280220393983]}
-        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        data = {"h3_cells": [630949280935159295, 630949280220393983]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
@@ -81,8 +81,8 @@ class TestMain(unittest.TestCase):
         requested for those that don't and the response contains an elevations list for those that were available and a
         `later` list of the input cells that weren't.
         """
-        input = {"h3_cells": [630949280935159295, 630949280220393983, 630949280220402687, 630949280220390399]}
-        request = Mock(method="POST", get_json=Mock(return_value=input), args=input)
+        data = {"h3_cells": [630949280935159295, 630949280220393983, 630949280220402687, 630949280220390399]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         mock_elevations = {630949280935159295: 32.1, 630949280220393983: 59}
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
