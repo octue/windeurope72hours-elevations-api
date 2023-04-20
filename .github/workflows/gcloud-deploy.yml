@@ -59,3 +59,4 @@ jobs:
           https_trigger_security_level: secure_always
           min_instances: 0
           max_instances: 10
+          timeout: 300
