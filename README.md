@@ -79,7 +79,41 @@ curl \
 - Requests of this form are limited to polygons that contain up to 1500 cells per request. You can reduce the number of
   cells within a polygon by decreasing the resolution.
 
+### Response
+
+A typical response will look like:
+
+```json
+{
+  "data": {
+    "elevations": { "631574537555217407": 33.0 }
+  },
+  "schema_info": "https://strands.octue.com/octue/h3-elevations-output",
+  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.0.json"
+}
+```
+
+As the API's database is lazily loaded (see output data section below), it will respond to any requests for coordinates
+it hasn't seen before by asking you to come back after a short estimated wait time (240s) while the database is
+populated. The response will look like:
+
+```json
+{
+  "data": {
+    "elevations": {},
+    "later": [631574537555217407],
+    "estimated_wait_time": 240
+  },
+  "schema_info": "https://strands.octue.com/octue/h3-elevations-output",
+  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.0.json"
+}
+```
+
+Resend the same request after the wait time has passed to get the elevations.
+
 ### Data schema
+
+The exact JSON schema for API inputs and outputs are below.
 
 #### Input
 
