@@ -138,7 +138,10 @@ def _extract_cells_to_populate(unavailable_cells):
     :return set(int): the subset of the unavailable cells that haven't recently had database population requested for them
     """
     cells_to_await = unavailable_cells & recently_requested_for_database_population_cache.keys()
-    logger.info("Still waiting for %d cells to be populated in database.", len(cells_to_await))
+
+    if cells_to_await:
+        logger.info("Still waiting for %d cells to be populated in database.", len(cells_to_await))
+
     cells_to_populate = unavailable_cells - cells_to_await
     return cells_to_populate
 
