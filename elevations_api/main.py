@@ -15,7 +15,7 @@ ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
 ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
-SINGLE_REQUEST_CELL_LIMIT = 1e5
+SINGLE_REQUEST_CELL_LIMIT = 15
 
 SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations/0.2.0.json"
 SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations"
@@ -110,7 +110,7 @@ def _parse_and_validate_data(data):
         return requested_cells
 
     requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=data["resolution"])
-    _check_cell_limit_not_exceeded(requested_cells)
+    _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
 
     logger.info(
         "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
@@ -133,14 +133,15 @@ def _validate_cells(cells):
             raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
 
-def _check_cell_limit_not_exceeded(cells):
+def _check_cell_limit_not_exceeded(cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT):
     """Check that the number of cells doesn't exceed the cell limit for a single request.
 
     :param iter(int) cells: the indexes of the cells to validate
+    :param int cell_limit: the maximum number of cells allowed in a single request
     :raise ValueError: if the cell limit is exceeded
     :return None:
     """
-    if len(cells) > SINGLE_REQUEST_CELL_LIMIT:
+    if len(cells) > cell_limit:
         raise ValueError(
             f"Request for {len(cells)} cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request."
         )
