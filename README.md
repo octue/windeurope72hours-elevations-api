@@ -1,9 +1,9 @@
-# WindEurope 72 Hours Challenge: Elevations API
+# WindEurope 72 Hours Challenge: Octue Elevations API
 
 ## Summary
 
-A REST API deployed as a Google Cloud Function that returns the ground elevations of the coordinates sent to it.
-The API accepts any of the following as inputs:
+A serverless REST API that returns the ground elevations of the coordinates sent to it. The API accepts any of the
+following as inputs:
 
 - H3 cells (a [hierarchical, hexagonal coordinate system](https://h3geo.org/) that combines position with resolution in
   a single index)
@@ -11,11 +11,17 @@ The API accepts any of the following as inputs:
 - A polygon defined by a set of latitude/longitude coordinates (the output is the elevations of the H3 cells within the
   polygon are returned)
 
-The elevation unit is meters.
+Elevations are defined as meters above the coordinate reference system defined in the underlying dataset (see data
+sources section) as:
+
+```
+Horizontal WGS84-G1150 (EPSG 4326) (DGED & DTED format), (EPSG 3035) for continental Europe and UTM , (EPSG 32740,
+32622, 32738, 32620) for the French DOMs (INSPIRE format), Vertical EGM2008 (EPSG 3855).
+```
 
 ## Usage
 
-### H3 cells
+### Method 1 - H3 cells
 
 Request the elevations of a list of H3 cells:
 
@@ -32,7 +38,7 @@ curl \
 - The H3 cells must be given in their integer form (not their hexadecimal string form)
 - Requests of this form are limited to 15 cells per request.
 
-### Latitude/longitudes
+### Method 2 - Latitude/longitude coordinates
 
 Request the elevations of a list of latitude/longitude coordinates:
 
@@ -51,7 +57,7 @@ curl \
   not included.
 - Requests of this form are limited to 15 cells per request.
 
-### H3 cells within a polygon
+### Method 3 - H3 cells within a polygon
 
 Request the elevations of the H3 cells contained within a polygon defined by a list of latitude/longitude coordinates:
 
@@ -73,30 +79,44 @@ curl \
 - Requests of this form are limited to polygons that contain up to 1500 cells per request. You can reduce the number of
   cells within a polygon by decreasing the resolution.
 
-## Input schema
+### Data schema
+
+#### Input
 
 - Information: https://strands.octue.com/octue/h3-elevations-input
 - JSON schema: https://jsonschema.registry.octue.com/octue/h3-elevations-input/0.1.0.json
 
 Note that data is only accepted via `POST` request.
 
-## Output schema
+#### Output
 
 - Information: https://strands.octue.com/octue/h3-elevations-output
 - JSON schema: https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.0.json
 
-## Data
+## Output data
 
-The data served by this API is stored in a Neo4j graph database, which is "lazily" populated by our [elevations popula
-tor data service](https://github.com/octue/windeurope72hours-elevations-populator). We chose this method to reduce the
-up-front cloud computation costs of populating trillions of data points. Once an elevation has been added to the
-database, it is permanently available.
+### Data storage
 
-The populator works by extracting elevations of the centerpoints of high resolution H3 cells at a 30m spatial
-resolution; elevations for lower resolution cells are calculated by averaging each cell's immediate children's
-elevations.
+The data served by the API is stored in a Neo4j graph database, which is "lazily" populated by our
+[elevations populator data service](https://github.com/octue/windeurope72hours-elevations-populator). The populator
+works by extracting the elevations of the centerpoints of high resolution H3 cells at a 30m spatial resolution from the
+underlying data source (see data sources section below); elevations for lower resolution cells are calculated by
+averaging each cell's immediate children's elevations. In the database, cells, elevations, and data sources are nodes
+connected by edges that define their relationships to each other.
 
-**Limitations**
+#### Why store a copy of the data?
+
+The original data is available only via latitude/longitude coordinates at a single resolution in a format that's
+difficult to automatically use. To facilitate the quick data access at multiple resolutions using the H3 coordinate
+system, we created an intermediate graph database that efficiently stores the relationships between H3 cells and can be
+easily and quickly queried.
+
+#### Why lazily populate instead of loading the whole dataset?
+
+We chose lazy-loading to reduce the up-front cloud computation and storage costs of populating trillions of data points.
+Once an elevation has been added to the database, however, it is permanently available.
+
+### Limitations
 
 As in the original dataset:
 
@@ -109,13 +129,13 @@ As in the original dataset:
     possible to provide meaningful elevations for cells with resolutions higher than 12 because they have a higher
     spatial resolution than the dataset
 
-**Citations**
+## Data sources
 
 The underlying dataset we used to provide the elevations is the Copernicus DEM - Global and European Digital Elevation
 Model (COP-DEM) GLO-30 dataset:
 
 - DOI: https://doi.org/10.5270/ESA-c5d3d65
-- Direct link https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
+- Direct link: https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
 
 We accessed it via the AWS S3 mirror, which provides easy access to the dataset's GeoTIFF files:
 
