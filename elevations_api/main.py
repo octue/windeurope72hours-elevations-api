@@ -110,7 +110,7 @@ def _parse_and_validate_data(data):
         _validate_cells(requested_cells)
         return requested_cells
 
-    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [[data["polygon"]]]}, res=data["resolution"])
+    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=data["resolution"])
     _check_cell_limit_not_exceeded(requested_cells)
 
     logger.info(
