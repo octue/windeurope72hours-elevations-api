@@ -5,8 +5,8 @@ from unittest.mock import Mock, patch
 from cachetools import TTLCache
 
 from elevations_api.main import (
-    SCHEMA_INFO_URL,
-    SCHEMA_URI,
+    OUTPUT_SCHEMA_INFO_URL,
+    OUTPUT_SCHEMA_URI,
     SINGLE_REQUEST_CELL_LIMIT,
     _add_cells_to_ttl_cache,
     _get_available_elevations_from_database,
@@ -74,7 +74,11 @@ class TestMain(unittest.TestCase):
                     get_or_request_elevations(request)
 
         mock_jsonify.assert_called_with(
-            {"schema_uri": SCHEMA_URI, "schema_info": SCHEMA_INFO_URL, "data": {"elevations": mock_elevations}}
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": mock_elevations},
+            }
         )
 
         mock_populate_database.assert_not_called()
@@ -134,7 +138,11 @@ class TestMain(unittest.TestCase):
                     get_or_request_elevations(request)
 
         mock_jsonify.assert_called_with(
-            {"schema_uri": SCHEMA_URI, "schema_info": SCHEMA_INFO_URL, "data": {"elevations": mock_elevations}}
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": mock_elevations},
+            }
         )
 
         mock_populate_database.assert_not_called()
@@ -152,7 +160,11 @@ class TestMain(unittest.TestCase):
                     get_or_request_elevations(request)
 
         mock_jsonify.assert_called_with(
-            {"schema_uri": SCHEMA_URI, "schema_info": SCHEMA_INFO_URL, "data": {"elevations": mock_elevations}}
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": mock_elevations},
+            }
         )
 
         mock_populate_database.assert_not_called()

@@ -18,8 +18,8 @@ DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
 DEFAULT_RESOLUTION = 12
 
-SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations/0.2.0.json"
-SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations"
+OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.0.json"
+OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
 
 
 logger = logging.getLogger(__name__)
@@ -87,8 +87,8 @@ def get_or_request_elevations(request):
 
     return jsonify(
         {
-            "schema_uri": SCHEMA_URI,
-            "schema_info": SCHEMA_INFO_URL,
+            "schema_uri": OUTPUT_SCHEMA_URI,
+            "schema_info": OUTPUT_SCHEMA_INFO_URL,
             "data": {"elevations": available_cells_and_elevations, **later},
         }
     )
