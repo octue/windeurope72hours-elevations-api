@@ -129,20 +129,14 @@ def _parse_and_validate_data(data):
     elif "coordinates" in data:
         requested_cells = {geo_to_h3(lat, lng, resolution) for lat, lng in data["coordinates"]}
         _check_cell_limit_not_exceeded(requested_cells)
-
-        logger.info(
-            "Received request for elevations at the lat/lng coordinates %r, equating to %d cells.",
-            data["coordinates"],
-            len(requested_cells),
-        )
-
+        logger.info("Received request for elevations at the lat/lng coordinates %r.", data["coordinates"])
         return requested_cells
 
     requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=resolution)
     _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
 
     logger.info(
-        "Received request for elevations of H3 cells within a polygon at resolution %d.",
+        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
         resolution,
         len(requested_cells),
     )
