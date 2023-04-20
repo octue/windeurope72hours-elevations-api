@@ -53,13 +53,6 @@ def get_or_request_elevations(request):
 
     data = request.get_json()
 
-    if "h3_cells" not in data and "polygon" not in data:
-        return (
-            "The body must contain a JSON object containing either an 'h3_cells' field or a 'polygon' and 'resolution' "
-            "field.",
-            400,
-        )
-
     try:
         requested_cells = _parse_and_validate_data(data)
     except (ValueError, H3CellError) as error:
@@ -101,6 +94,15 @@ def _parse_and_validate_data(data):
     :param dict data: the body of the request containing either the key 'h3_cells' or the keys 'polygon' and 'resolution'
     :return set(int): the cell indexes to get the elevations for
     """
+    if "h3_cells" not in data and not ("polygon" in data and "resolution" in data):
+        message = (
+            "The body must be a JSON object containing either an 'h3_cells' field or a 'polygon' and 'resolution' "
+            "field."
+        )
+
+        logger.error(message)
+        raise ValueError(message)
+
     if "h3_cells" in data:
         requested_cells = set(data["h3_cells"])
         logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
