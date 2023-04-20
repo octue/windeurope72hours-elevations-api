@@ -1,9 +1,13 @@
+import time
 import unittest
 from unittest.mock import Mock, patch
+
+from cachetools import TTLCache
 
 from elevations_api.main import (
     SCHEMA_INFO_URL,
     SCHEMA_URI,
+    _add_cells_to_ttl_cache,
     _get_available_elevations_from_database,
     get_or_request_elevations,
 )
@@ -91,6 +95,42 @@ class TestMain(unittest.TestCase):
         self.assertEqual(response["data"]["elevations"], mock_elevations)
         self.assertEqual(set(response["data"]["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
+
+    def test_database_population_not_re_requested_if_cell_in_ttl_cache(self):
+        """Test that database population is not re-requested for a cell if it's in the TTL cache."""
+        data = {"h3_cells": [630949280935159295]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+
+        _add_cells_to_ttl_cache(data["h3_cells"])
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                # Mock `jsonify` to avoid needing Flask app context or test app.
+                with patch("elevations_api.main.jsonify"):
+                    get_or_request_elevations(request)
+
+        mock_populate_database.assert_not_called()
+
+    def test_database_population_is_re_requested_if_cell_in_ttl_cache_but_ttl_has_expired(self):
+        """Test that database population is re-requested for a cell if it's in the TTL cache but its TTL has expired."""
+        cell = 630949280935159295
+        data = {"h3_cells": [cell]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+        mock_cache = TTLCache(maxsize=1024, ttl=0.1)
+
+        with patch("elevations_api.main.recently_requested_for_database_population_cache", mock_cache):
+            _add_cells_to_ttl_cache(data["h3_cells"])
+            self.assertIn(cell, mock_cache)
+            time.sleep(0.1)
+            self.assertNotIn(cell, mock_cache)
+
+            with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
+                with patch("elevations_api.main._populate_database") as mock_populate_database:
+                    # Mock `jsonify` to avoid needing Flask app context or test app.
+                    with patch("elevations_api.main.jsonify"):
+                        get_or_request_elevations(request)
+
+        mock_populate_database.assert_called()
 
     def test_get_available_elevations_from_database(self):
         """Test that a correct query is formed when getting elevations from the database."""
