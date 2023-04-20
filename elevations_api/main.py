@@ -16,7 +16,9 @@ ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
-DEFAULT_RESOLUTION = 12
+
+MINIMUM_RESOLUTION = 8
+MAXIMUM_RESOLUTION = 12
 
 OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.0.json"
 OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
@@ -109,6 +111,14 @@ def _parse_and_validate_data(data):
             "'resolution field', or a 'polygon' and optional 'resolution' field."
         )
 
+    resolution = data.get("resolution", MAXIMUM_RESOLUTION)
+
+    if resolution > MAXIMUM_RESOLUTION or resolution < MINIMUM_RESOLUTION:
+        raise ValueError(
+            f"Request for resolution {resolution} rejected - the resolution must be between {MINIMUM_RESOLUTION} and "
+            f"{MAXIMUM_RESOLUTION} inclusively."
+        )
+
     if "h3_cells" in data:
         requested_cells = set(data["h3_cells"])
         logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
@@ -117,7 +127,6 @@ def _parse_and_validate_data(data):
         return requested_cells
 
     elif "coordinates" in data:
-        resolution = data.get("resolution", DEFAULT_RESOLUTION)
         requested_cells = {geo_to_h3(lat, lng, resolution) for lat, lng in data["coordinates"]}
         _check_cell_limit_not_exceeded(requested_cells)
 
@@ -129,7 +138,6 @@ def _parse_and_validate_data(data):
 
         return requested_cells
 
-    resolution = data.get("resolution", DEFAULT_RESOLUTION)
     requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=resolution)
     _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
 

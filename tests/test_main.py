@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 from cachetools import TTLCache
 
 from elevations_api.main import (
+    MAXIMUM_RESOLUTION,
+    MINIMUM_RESOLUTION,
     OUTPUT_SCHEMA_INFO_URL,
     OUTPUT_SCHEMA_URI,
     SINGLE_REQUEST_CELL_LIMIT,
@@ -58,6 +60,24 @@ class TestMain(unittest.TestCase):
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         response = get_or_request_elevations(request)
         self.assertEqual(response, ("1 is not a valid H3 cell - aborting request.", 400))
+
+    def test_error_returned_if_resolution_outside_allowed_range(self):
+        """Test that an error response is returned if the requested resolution is above the maximum resolution or below
+        the minimum resolution.
+        """
+        for resolution in (1, 13):
+            with self.subTest(resolution=resolution):
+                data = {"coordinates": [[54.53097, 5.96836]], "resolution": resolution}
+                request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+                response = get_or_request_elevations(request)
+                self.assertEqual(
+                    response,
+                    (
+                        f"Request for resolution {resolution} rejected - the resolution must be between "
+                        f"{MINIMUM_RESOLUTION} and {MAXIMUM_RESOLUTION} inclusively.",
+                        400,
+                    ),
+                )
 
     def test_all_cells_available(self):
         """Test that, when all the input cells already have elevations in the database, database population is not
