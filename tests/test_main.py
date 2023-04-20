@@ -7,6 +7,7 @@ from cachetools import TTLCache
 from elevations_api.main import (
     SCHEMA_INFO_URL,
     SCHEMA_URI,
+    SINGLE_REQUEST_CELL_LIMIT,
     _add_cells_to_ttl_cache,
     _get_available_elevations_from_database,
     get_or_request_elevations,
@@ -43,14 +44,14 @@ class TestMain(unittest.TestCase):
 
     def test_error_returned_if_cell_limit_exceeded(self):
         """Test that an error response is returned if the number of cells in the request exceeds the cell limit."""
-        data = {"h3_cells": [1, 2]}
+        data = {"h3_cells": list(range(SINGLE_REQUEST_CELL_LIMIT + 1))}
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
-        cell_limit = 1
+        response = get_or_request_elevations(request)
 
-        with patch("elevations_api.main.SINGLE_REQUEST_CELL_LIMIT", cell_limit):
-            response = get_or_request_elevations(request)
-
-        self.assertEqual(response, ("Request for 2 cells rejected - only 1 cells can be sent per request.", 400))
+        self.assertEqual(
+            response,
+            (f"Request for 16 cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request.", 400),
+        )
 
     def test_error_returned_if_cells_are_invalid(self):
         """Test that an error response is returned if invalid H3 cells are requested."""
