@@ -5,7 +5,7 @@ import functions_framework
 from cachetools import TTLCache
 from flask import jsonify
 from h3 import H3CellError
-from h3.api.basic_int import h3_is_valid, polyfill
+from h3.api.basic_int import geo_to_h3, h3_is_valid, polyfill
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -16,6 +16,7 @@ ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
+DEFAULT_RESOLUTION = 12
 
 SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations/0.2.0.json"
 SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations"
@@ -96,10 +97,10 @@ def _parse_and_validate_data(data):
     :param dict data: the body of the request containing either the key 'h3_cells' or the keys 'polygon' and 'resolution'
     :return set(int): the cell indexes to get the elevations for
     """
-    if "h3_cells" not in data and not ("polygon" in data and "resolution" in data):
+    if not isinstance(data, dict) or not data.keys() & {"h3_cells", "coordinates", "polygon"}:
         raise ValueError(
-            "The body must be a JSON object containing either an 'h3_cells' field or a 'polygon' and 'resolution' "
-            "field."
+            "The body must be a JSON object containing either an 'h3_cells' field, a 'coordinates' field and optional "
+            "'resolution field', or a 'polygon' and optional 'resolution' field."
         )
 
     if "h3_cells" in data:
@@ -109,12 +110,26 @@ def _parse_and_validate_data(data):
         _validate_cells(requested_cells)
         return requested_cells
 
-    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=data["resolution"])
+    elif "coordinates" in data:
+        resolution = data.get("resolution", DEFAULT_RESOLUTION)
+        requested_cells = {geo_to_h3(lat, lng, resolution) for lat, lng in data["coordinates"]}
+        _check_cell_limit_not_exceeded(requested_cells)
+
+        logger.info(
+            "Received request for elevations at the lat/lng coordinates %r, equating to %d cells.",
+            data["coordinates"],
+            len(requested_cells),
+        )
+
+        return requested_cells
+
+    resolution = data.get("resolution", DEFAULT_RESOLUTION)
+    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=resolution)
     _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
 
     logger.info(
-        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
-        data["resolution"],
+        "Received request for elevations of H3 cells within a polygon at resolution %d.",
+        resolution,
         len(requested_cells),
     )
 
