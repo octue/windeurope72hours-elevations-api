@@ -59,7 +59,7 @@ def get_or_request_elevations(request):
     data = request.get_json()
 
     try:
-        requested_cells = _parse_and_validate_data(data)
+        requested_cells, cells_and_coordinates = _parse_and_validate_data(data)
     except (ValueError, H3CellError) as error:
         message = str(error)
         logger.error(message)
@@ -74,7 +74,7 @@ def get_or_request_elevations(request):
         _populate_database(cells_to_populate)
 
     logger.info("Sending response.")
-    return jsonify(_format_response(data, available_cells_and_elevations, unavailable_cells))
+    return jsonify(_format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates))
 
 
 def _parse_and_validate_data(data):
@@ -84,7 +84,7 @@ def _parse_and_validate_data(data):
        key mapped to the resolution (an integer) at which to get the H3 cells contained within the polygon.
 
     :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
-    :return set(int): the cell indexes to get the elevations for
+    :return set(int), dict(int, tuple(float, float))|None: the cell indexes to get the elevations for and, if lat/lng coordinates were the input for this request, a mapping of cell indexes to lat/lng coordinates
     """
     if not isinstance(data, dict) or not data.keys() & {"h3_cells", "coordinates", "polygon"}:
         raise ValueError(
@@ -105,13 +105,18 @@ def _parse_and_validate_data(data):
         logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
         _check_cell_limit_not_exceeded(requested_cells)
         _validate_cells(requested_cells)
-        return requested_cells
+        return requested_cells, None
 
     elif "coordinates" in data:
-        requested_cells = {geo_to_h3(lat, lng, resolution) for lat, lng in data["coordinates"]}
+        # Map the coordinates to their cells so their elevations can be exactly matched back to them later. We have to
+        # do this because `(h3_to_geo(geo_to_h3(lat, lng, resolution))` does not give `(lat, lng)` exactly because the
+        # centrepoint of each H3 cell is returned, not the original lat/lng coordinate that simply fell somewhere within
+        # that cell.
+        cells_and_coordinates = {geo_to_h3(lat, lng, resolution): (lat, lng) for lat, lng in data["coordinates"]}
+        requested_cells = set(cells_and_coordinates.keys())
         _check_cell_limit_not_exceeded(requested_cells)
         logger.info("Received request for elevations at the lat/lng coordinates %r.", data["coordinates"])
-        return requested_cells
+        return requested_cells, cells_and_coordinates
 
     requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=resolution)
     _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
@@ -122,7 +127,7 @@ def _parse_and_validate_data(data):
         len(requested_cells),
     )
 
-    return requested_cells
+    return requested_cells, None
 
 
 def _validate_cells(cells):
@@ -212,17 +217,19 @@ def _populate_database(cells):
     service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": list(cells)})
 
 
-def _format_response(data, available_cells_and_elevations, unavailable_cells):
+def _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates):
     """Format the API's JSON-ready response to send in answer to the current request.
 
     :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
     :param dict(int, float) available_cells_and_elevations: a mapping of cell index to elevation for cells that have elevations in the database. The elevation is measured in meters.
     :param set(int) unavailable_cells: the set of cell indexes that aren't in the database
+    :param dict(int, tuple(float, float))|None: if lat/lng coordinates were the input for this request, a mapping of cell indexes to lat/lng coordinates
     :return dict: the JSON-ready response
     """
     if "coordinates" in data:
         available_cells_and_elevations = {
-            json.dumps(h3_to_geo(cell)): elevation for cell, elevation in available_cells_and_elevations.items()
+            json.dumps(cells_and_coordinates[cell]): elevation
+            for cell, elevation in available_cells_and_elevations.items()
         }
 
     if unavailable_cells:
