@@ -211,12 +211,16 @@ def _validate_h3_cells(cells):
     """Check that the cell indexes correspond to valid H3 cells and that they don't exceed the cell limit.
 
     :param list(int) cells: the cell indexes to validate
+    :raise h3.H3CellError: if any of the cell indexes are invalid
     :return None:
     """
     requested_cells = set(cells)
     logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
     _check_cell_limit_not_exceeded(requested_cells)
-    _validate_cells(requested_cells)
+
+    for cell in cells:
+        if not h3_is_valid(cell):
+            raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
 
 def _convert_latitude_longitude_coordinates_to_cells_and_validate(coordinates, resolution):
@@ -257,18 +261,6 @@ def _get_cells_within_polygon_and_validate(polygon_coordinates, resolution):
     )
 
     return requested_cells
-
-
-def _validate_cells(cells):
-    """Check that cell indexes correspond to valid H3 cells.
-
-    :param iter(int) cells: the indexes of the cells to validate
-    :raise h3.H3CellError: if any of the cell indexes are invalid
-    :return None:
-    """
-    for cell in cells:
-        if not h3_is_valid(cell):
-            raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
 
 def _check_cell_limit_not_exceeded(cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT):
