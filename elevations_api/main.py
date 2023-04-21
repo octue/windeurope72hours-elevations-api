@@ -101,59 +101,13 @@ def _parse_and_validate_data(data):
         )
 
     if "h3_cells" in data:
-        requested_cells = set(data["h3_cells"])
-        logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
-        _check_cell_limit_not_exceeded(requested_cells)
-        _validate_cells(requested_cells)
-        return requested_cells, None
+        _validate_h3_cells(data["h3_cells"])
+        return set(data["h3_cells"]), None
 
     elif "coordinates" in data:
-        # Map the coordinates to their cells so their elevations can be exactly matched back to them later. We have to
-        # do this because `(h3_to_geo(geo_to_h3(lat, lng, resolution))` does not give `(lat, lng)` exactly because the
-        # centrepoint of each H3 cell is returned, not the original lat/lng coordinate that simply fell somewhere within
-        # that cell.
-        cells_and_coordinates = {geo_to_h3(lat, lng, resolution): (lat, lng) for lat, lng in data["coordinates"]}
-        requested_cells = set(cells_and_coordinates.keys())
-        _check_cell_limit_not_exceeded(requested_cells)
-        logger.info("Received request for elevations at the lat/lng coordinates %r.", data["coordinates"])
-        return requested_cells, cells_and_coordinates
+        return _convert_latitude_longitude_coordinates_to_cells_and_validate(data["coordinates"], resolution)
 
-    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [data["polygon"]]}, res=resolution)
-    _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
-
-    logger.info(
-        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
-        resolution,
-        len(requested_cells),
-    )
-
-    return requested_cells, None
-
-
-def _validate_cells(cells):
-    """Check that cell indexes correspond to valid H3 cells.
-
-    :param iter(int) cells: the indexes of the cells to validate
-    :raise h3.H3CellError: if any of the cell indexes are invalid
-    :return None:
-    """
-    for cell in cells:
-        if not h3_is_valid(cell):
-            raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
-
-
-def _check_cell_limit_not_exceeded(cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT):
-    """Check that the number of cells doesn't exceed the cell limit for a single request.
-
-    :param iter(int) cells: the indexes of the cells to validate
-    :param int cell_limit: the maximum number of cells allowed in a single request
-    :raise ValueError: if the cell limit is exceeded
-    :return None:
-    """
-    if len(cells) > cell_limit:
-        raise ValueError(
-            f"Request for {len(cells)} cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request."
-        )
+    return _get_cells_within_polygon_and_validate(data["polygon"], resolution), None
 
 
 def _get_available_elevations_from_database(cells):
@@ -251,3 +205,81 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
         "schema_info": OUTPUT_SCHEMA_INFO_URL,
         "data": {"elevations": available_cells_and_elevations, **later},
     }
+
+
+def _validate_h3_cells(cells):
+    """Check that the cell indexes correspond to valid H3 cells and that they don't exceed the cell limit.
+
+    :param list(int) cells: the cell indexes to validate
+    :return None:
+    """
+    requested_cells = set(cells)
+    logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
+    _check_cell_limit_not_exceeded(requested_cells)
+    _validate_cells(requested_cells)
+
+
+def _convert_latitude_longitude_coordinates_to_cells_and_validate(coordinates, resolution):
+    """Convert the given latitude/longitude coordinates to H3 cells, check that they don't exceed the cell limit, and
+    return them along with a mapping of cell index to latitude/longitude coordinate so the input coordinates' elevations
+    can be exactly matched back to them later. We have to do this because `(h3_to_geo(geo_to_h3(lat, lng, resolution))`
+    does not give `(lat, lng)` exactly because the centrepoint of each H3 cell is returned, not the original lat/lng
+    coordinate that simply fell somewhere within that cell.
+
+    :param list(list(float, float)) coordinates: lat/lng coordinates to convert to H3 cells and validate
+    :param int resolution: the resolution to convert the lat/lng coordinates to H3 cells at
+    :return set(int), dict(int, tuple(float, float)): the cell indexes to get the elevations for and a mapping of cell indexes to lat/lng coordinates
+    """
+    cells_and_coordinates = {geo_to_h3(lat, lng, resolution): (lat, lng) for lat, lng in coordinates}
+    requested_cells = set(cells_and_coordinates.keys())
+    _check_cell_limit_not_exceeded(requested_cells)
+    logger.info("Received request for elevations at the lat/lng coordinates %r.", coordinates)
+    return requested_cells, cells_and_coordinates
+
+
+def _get_cells_within_polygon_and_validate(polygon_coordinates, resolution):
+    """Get the H3 cells of the given resolution whose centrepoints fall within the polygon defined by the given
+    coordinates and check that the cell limit isn't exceeded. Note that the cell limit is 100 times higher when
+    requesting cells within a polygon because they are guaranteed to be next to each other and so require much less
+    computation to populate them in the database.
+
+    :param list(list(float, float)) polygon_coordinates: lat/lng coordinates defining the corners of the polygon
+    :param int resolution: the resolution of the cells to get within the polygon.
+    :return set(int): the indexes of the cells whose centrepoints fall within the polygon
+    """
+    requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [polygon_coordinates]}, res=resolution)
+    _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
+
+    logger.info(
+        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
+        resolution,
+        len(requested_cells),
+    )
+
+    return requested_cells
+
+
+def _validate_cells(cells):
+    """Check that cell indexes correspond to valid H3 cells.
+
+    :param iter(int) cells: the indexes of the cells to validate
+    :raise h3.H3CellError: if any of the cell indexes are invalid
+    :return None:
+    """
+    for cell in cells:
+        if not h3_is_valid(cell):
+            raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
+
+
+def _check_cell_limit_not_exceeded(cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT):
+    """Check that the number of cells doesn't exceed the cell limit for a single request.
+
+    :param iter(int) cells: the indexes of the cells to validate
+    :param int cell_limit: the maximum number of cells allowed in a single request
+    :raise ValueError: if the cell limit is exceeded
+    :return None:
+    """
+    if len(cells) > cell_limit:
+        raise ValueError(
+            f"Request for {len(cells)} cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request."
+        )
