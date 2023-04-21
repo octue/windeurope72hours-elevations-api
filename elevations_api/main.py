@@ -72,29 +72,8 @@ def get_or_request_elevations(request):
         _add_cells_to_ttl_cache(cells_to_populate)
         _populate_database(cells_to_populate)
 
-    if unavailable_cells:
-        if "coordinates" in data:
-            later = {
-                "later": [h3_to_geo(cell) for cell in unavailable_cells],
-                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
-            }
-        else:
-            later = {
-                "later": list(unavailable_cells),
-                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
-            }
-    else:
-        later = {}
-
     logger.info("Sending response.")
-
-    return jsonify(
-        {
-            "schema_uri": OUTPUT_SCHEMA_URI,
-            "schema_info": OUTPUT_SCHEMA_INFO_URL,
-            "data": {"elevations": available_cells_and_elevations, **later},
-        }
-    )
+    return jsonify(_format_response(data, available_cells_and_elevations, unavailable_cells))
 
 
 def _parse_and_validate_data(data):
@@ -103,7 +82,7 @@ def _parse_and_validate_data(data):
     2. A 'polygon' key mapped to a list of lat/lng coordinates that define the points of a polygon, and a 'resolution'
        key mapped to the resolution (an integer) at which to get the H3 cells contained within the polygon.
 
-    :param dict data: the body of the request containing either the key 'h3_cells' or the keys 'polygon' and 'resolution'
+    :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
     :return set(int): the cell indexes to get the elevations for
     """
     if not isinstance(data, dict) or not data.keys() & {"h3_cells", "coordinates", "polygon"}:
@@ -230,3 +209,37 @@ def _populate_database(cells):
     logger.info("Requesting database population for %d cells.", len(cells))
     service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
     service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": list(cells)})
+
+
+def _format_response(data, available_cells_and_elevations, unavailable_cells):
+    """Format the API's JSON-ready response to send in answer to the current request.
+
+    :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
+    :param dict(int, float) available_cells_and_elevations: a mapping of cell index to elevation for cells that have elevations in the database. The elevation is measured in meters.
+    :param set(int) unavailable_cells: the set of cell indexes that aren't in the database
+    :return dict: the JSON-ready response
+    """
+    if "coordinates" in data:
+        available_cells_and_elevations = {
+            h3_to_geo(cell): elevation for cell, elevation in available_cells_and_elevations.items()
+        }
+
+    if unavailable_cells:
+        if "coordinates" in data:
+            later = {
+                "later": [h3_to_geo(cell) for cell in unavailable_cells],
+                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+            }
+        else:
+            later = {
+                "later": list(unavailable_cells),
+                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+            }
+    else:
+        later = {}
+
+    return {
+        "schema_uri": OUTPUT_SCHEMA_URI,
+        "schema_info": OUTPUT_SCHEMA_INFO_URL,
+        "data": {"elevations": available_cells_and_elevations, **later},
+    }
