@@ -215,12 +215,13 @@ def _validate_h3_cells(cells):
     :return None:
     """
     requested_cells = set(cells)
-    logger.info("Received request for elevations at the H3 cells: %r.", requested_cells)
     _check_cell_limit_not_exceeded(requested_cells)
 
     for cell in cells:
         if not h3_is_valid(cell):
             raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
+
+    logger.info("Accepted request for elevations of the H3 cells: %r.", requested_cells)
 
 
 def _convert_coordinates_to_cells_and_validate(coordinates, resolution):
@@ -237,7 +238,7 @@ def _convert_coordinates_to_cells_and_validate(coordinates, resolution):
     cells_and_coordinates = {geo_to_h3(lat, lng, resolution): (lat, lng) for lat, lng in coordinates}
     requested_cells = set(cells_and_coordinates.keys())
     _check_cell_limit_not_exceeded(requested_cells)
-    logger.info("Received request for elevations at the lat/lng coordinates %r.", coordinates)
+    logger.info("Accepted request for elevations of the lat/lng coordinates %r.", coordinates)
     return requested_cells, cells_and_coordinates
 
 
@@ -255,7 +256,7 @@ def _get_cells_within_polygon_and_validate(polygon_coordinates, resolution):
     _check_cell_limit_not_exceeded(requested_cells, cell_limit=SINGLE_REQUEST_CELL_LIMIT * 100)
 
     logger.info(
-        "Received request for elevations of H3 cells within a polygon at resolution %d, equating to %d cells.",
+        "Accepted request for elevations of the H3 cells within a polygon at resolution %d, equating to %d cells.",
         resolution,
         len(requested_cells),
     )
