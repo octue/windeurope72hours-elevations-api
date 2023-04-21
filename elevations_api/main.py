@@ -21,7 +21,7 @@ SINGLE_REQUEST_CELL_LIMIT = 15
 MINIMUM_RESOLUTION = 8
 MAXIMUM_RESOLUTION = 12
 
-OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.1.json"
+OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
 OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
 
 

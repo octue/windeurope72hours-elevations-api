@@ -89,7 +89,7 @@ A typical response will look like:
     "elevations": { "631574537555217407": 33.0 }
   },
   "schema_info": "https://strands.octue.com/octue/h3-elevations-output",
-  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.1.json"
+  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
 }
 ```
 
@@ -105,7 +105,7 @@ populated. The response will look like:
     "estimated_wait_time": 240
   },
   "schema_info": "https://strands.octue.com/octue/h3-elevations-output",
-  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.1.json"
+  "schema_uri": "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
 }
 ```
 
@@ -125,7 +125,7 @@ Note that data is only accepted via `POST` request.
 #### Output
 
 - Information: https://strands.octue.com/octue/h3-elevations-output
-- JSON schema: https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.1.json
+- JSON schema: https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json
 
 ## Output data
 
