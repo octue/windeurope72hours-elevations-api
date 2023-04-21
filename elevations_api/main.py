@@ -83,7 +83,7 @@ def _parse_and_validate_data(data):
     2. A 'polygon' key mapped to a list of lat/lng coordinates that define the points of a polygon, and a 'resolution'
        key mapped to the resolution (an integer) at which to get the H3 cells contained within the polygon.
 
-    :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
+    :param dict data: the body of the request containing either the key 'h3_cells', the keys 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
     :return set(int), dict(int, tuple(float, float))|None: the cell indexes to get the elevations for and, if lat/lng coordinates were the input for this request, a mapping of cell indexes to lat/lng coordinates
     """
     if not isinstance(data, dict) or not data.keys() & {"h3_cells", "coordinates", "polygon"}:
@@ -105,7 +105,7 @@ def _parse_and_validate_data(data):
         return set(data["h3_cells"]), None
 
     elif "coordinates" in data:
-        return _convert_latitude_longitude_coordinates_to_cells_and_validate(data["coordinates"], resolution)
+        return _convert_coordinates_to_cells_and_validate(data["coordinates"], resolution)
 
     return _get_cells_within_polygon_and_validate(data["polygon"], resolution), None
 
@@ -174,7 +174,7 @@ def _populate_database(cells):
 def _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates):
     """Format the API's JSON-ready response to send in answer to the current request.
 
-    :param dict data: the body of the request containing either the key 'h3_cells', the key 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
+    :param dict data: the body of the request containing either the key 'h3_cells', the keys 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
     :param dict(int, float) available_cells_and_elevations: a mapping of cell index to elevation for cells that have elevations in the database. The elevation is measured in meters.
     :param set(int) unavailable_cells: the set of cell indexes that aren't in the database
     :param dict(int, tuple(float, float))|None: if lat/lng coordinates were the input for this request, a mapping of cell indexes to lat/lng coordinates
@@ -223,7 +223,7 @@ def _validate_h3_cells(cells):
             raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
 
-def _convert_latitude_longitude_coordinates_to_cells_and_validate(coordinates, resolution):
+def _convert_coordinates_to_cells_and_validate(coordinates, resolution):
     """Convert the given latitude/longitude coordinates to H3 cells, check that they don't exceed the cell limit, and
     return them along with a mapping of cell index to latitude/longitude coordinate so the input coordinates' elevations
     can be exactly matched back to them later. We have to do this because `(h3_to_geo(geo_to_h3(lat, lng, resolution))`
