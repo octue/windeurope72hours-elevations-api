@@ -100,14 +100,25 @@ def _parse_and_validate_data(data):
             f"{MAXIMUM_RESOLUTION} inclusively."
         )
 
+    cells_and_coordinates = None
+
     if "h3_cells" in data:
         _validate_h3_cells(data["h3_cells"])
-        return set(data["h3_cells"]), None
+        requested_cells = set(data["h3_cells"])
 
     elif "coordinates" in data:
-        return _convert_coordinates_to_cells_and_validate(data["coordinates"], resolution)
+        requested_cells, cells_and_coordinates = _convert_coordinates_to_cells_and_validate(
+            data["coordinates"],
+            resolution,
+        )
 
-    return _get_cells_within_polygon_and_validate(data["polygon"], resolution), None
+    else:
+        requested_cells = _get_cells_within_polygon_and_validate(data["polygon"], resolution)
+
+    if not requested_cells:
+        raise ValueError("Request for zero cells rejected.")
+
+    return requested_cells, cells_and_coordinates
 
 
 def _get_available_elevations_from_database(cells):
@@ -249,7 +260,7 @@ def _get_cells_within_polygon_and_validate(polygon_coordinates, resolution):
     computation to populate them in the database.
 
     :param list(list(float, float)) polygon_coordinates: lat/lng coordinates defining the corners of the polygon
-    :param int resolution: the resolution of the cells to get within the polygon.
+    :param int resolution: the resolution of the cells to get within the polygon
     :return set(int): the indexes of the cells whose centrepoints fall within the polygon
     """
     requested_cells = polyfill(geojson={"type": "Polygon", "coordinates": [polygon_coordinates]}, res=resolution)
