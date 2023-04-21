@@ -183,7 +183,7 @@ class TestMain(unittest.TestCase):
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": mock_elevations},
+                "data": {"elevations": {"[54.53097, 5.96836]": 1}},
             }
         )
 

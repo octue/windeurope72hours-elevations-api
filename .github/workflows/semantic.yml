@@ -1,0 +1,22 @@
+name: semantic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-semantic-version:
+    if: "!contains(github.event.head_commit.message, 'skipci')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check Semantic Version
+        uses: octue/check-semantic-version@1.0.0.beta-9
+        with:
+          path: pyproject.toml
+          breaking_change_indicated_by: minor

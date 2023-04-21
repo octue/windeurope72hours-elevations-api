@@ -1,0 +1,35 @@
+name: Release
+
+# Only trigger when a pull request into main branch is merged.
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.3.2
+
+      - name: Check pyproject.toml file
+        run: poetry check
+
+      - name: Get package version
+        id: get-package-version
+        run: echo "package_version=$(poetry version -s)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, no need to create your own.
+        with:
+          tag_name: ${{ steps.get-package-version.outputs.package_version }}
+          release_name: ${{ github.event.pull_request.title }}
+          body: ${{ github.event.pull_request.body }}
+          draft: false
+          prerelease: false
