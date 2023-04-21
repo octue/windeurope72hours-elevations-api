@@ -26,6 +26,7 @@ class TestMain(unittest.TestCase):
     def test_error_returned_if_input_data_is_incorrectly_formatted(self):
         """Test that an error is returned if the input data in incorrectly formatted."""
         for data in [
+            [],
             [630949280935159295],
             {"incorrect": [630949280935159295]},
             {"resolution": 11},
@@ -42,6 +43,13 @@ class TestMain(unittest.TestCase):
                         400,
                     ),
                 )
+
+    def test_error_returned_if_zero_cells_requested(self):
+        """Test that an error is returned if zero cells are requested."""
+        data = {"h3_cells": []}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+        response = get_or_request_elevations(request)
+        self.assertEqual(response, ("Request for zero cells rejected.", 400))
 
     def test_error_returned_if_cell_limit_exceeded(self):
         """Test that an error response is returned if the number of cells in the request exceeds the cell limit."""
