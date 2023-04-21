@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -221,7 +222,7 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells):
     """
     if "coordinates" in data:
         available_cells_and_elevations = {
-            h3_to_geo(cell): elevation for cell, elevation in available_cells_and_elevations.items()
+            json.dumps(h3_to_geo(cell)): elevation for cell, elevation in available_cells_and_elevations.items()
         }
 
     if unavailable_cells:
