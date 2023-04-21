@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "windeurope72-elevations-api-private"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Marcus Lugg <marcus@octue.com>"]
+license = "MIT"
 readme = "README.md"
 packages = [{include = "elevations_api"}]
 
