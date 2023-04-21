@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+
+jobs:
+  run-tests:
+    if: "!contains(github.event.head_commit.message, 'skipci')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.3.2
+
+      - name: Check pyproject.toml file
+        run: poetry check
+
+      - name: Install package
+        run: poetry install
+
+      - name: Run tests
+        env:
+          NEO4J_PASSWORD: this-will-not-work
+          NEO4J_URI: this-will-not-work
+          NEO4J_USERNAME: this-will-not-work
+        run: poetry run python -m unittest
