@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "windeurope72-elevations-api-private"
+name = "windeurope72-elevations-api"
 version = "0.1.3"
 description = ""
 authors = ["Marcus Lugg <marcus@octue.com>"]
