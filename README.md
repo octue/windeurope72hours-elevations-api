@@ -30,7 +30,7 @@ curl \
   --header "Content-Type: application/json" \
   --request POST \
   --data '{"h3_cells": [630949280935159295, 630949280220393983]}' \
-  https://europe-west1-windeurope72hours.cloudfunctions.net/elevations-api
+  https://europe-west1-windeurope72-private.cloudfunctions.net/elevations-api
 ```
 
 **Notes**
@@ -47,7 +47,7 @@ curl \
   --header "Content-Type: application/json" \
   --request POST \
   --data '{"coordinates": [[54.53097, 5.96836]]}' \
-  https://europe-west1-windeurope72hours.cloudfunctions.net/elevations-api
+  https://europe-west1-windeurope72-private.cloudfunctions.net/elevations-api
 ```
 
 **Notes**
@@ -66,7 +66,7 @@ curl \
   --header "Content-Type: application/json" \
   --request POST \
   --data '{"polygon": [[54.53097, 5.96836], [54.53075, 5.96435], [54.52926, 5.96432], [54.52903, 5.96888]]}' \
-  https://europe-west1-windeurope72hours.cloudfunctions.net/elevations-api
+  https://europe-west1-windeurope72-private.cloudfunctions.net/elevations-api
 ```
 
 **Notes**
