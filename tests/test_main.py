@@ -21,7 +21,10 @@ class TestMain(unittest.TestCase):
         """Test that an error response is returned if the request method is not `POST`."""
         request = Mock(method="GET")
         response = get_or_request_elevations(request)
-        self.assertEqual(response, ("This endpoint only accepts POST requests.", 405))
+        self.assertEqual(
+            response,
+            ("This endpoint only accepts POST or OPTIONS requests.", 405, {"Access-Control-Allow-Origin": "*"}),
+        )
 
     def test_error_returned_if_input_data_is_incorrectly_formatted(self):
         """Test that an error is returned if the input data in incorrectly formatted."""
@@ -41,6 +44,7 @@ class TestMain(unittest.TestCase):
                         "The body must be a JSON object containing either an 'h3_cells' field, a 'coordinates' field "
                         "and optional 'resolution field', or a 'polygon' and optional 'resolution' field.",
                         400,
+                        {"Access-Control-Allow-Origin": "*"},
                     ),
                 )
 
@@ -49,7 +53,7 @@ class TestMain(unittest.TestCase):
         data = {"h3_cells": []}
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         response = get_or_request_elevations(request)
-        self.assertEqual(response, ("Request for zero cells rejected.", 400))
+        self.assertEqual(response, ("Request for zero cells rejected.", 400, {"Access-Control-Allow-Origin": "*"}))
 
     def test_error_returned_if_cell_limit_exceeded(self):
         """Test that an error response is returned if the number of cells in the request exceeds the cell limit."""
@@ -59,7 +63,11 @@ class TestMain(unittest.TestCase):
 
         self.assertEqual(
             response,
-            (f"Request for 16 cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request.", 400),
+            (
+                f"Request for 16 cells rejected - only {SINGLE_REQUEST_CELL_LIMIT} cells can be sent per request.",
+                400,
+                {"Access-Control-Allow-Origin": "*"},
+            ),
         )
 
     def test_error_returned_if_cells_are_invalid(self):
@@ -67,7 +75,10 @@ class TestMain(unittest.TestCase):
         data = {"h3_cells": [1, 630949280935159295]}
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         response = get_or_request_elevations(request)
-        self.assertEqual(response, ("1 is not a valid H3 cell - aborting request.", 400))
+        self.assertEqual(
+            response,
+            ("1 is not a valid H3 cell - aborting request.", 400, {"Access-Control-Allow-Origin": "*"}),
+        )
 
     def test_error_returned_if_resolution_outside_allowed_range(self):
         """Test that an error response is returned if the requested resolution is above the maximum resolution or below
@@ -84,6 +95,7 @@ class TestMain(unittest.TestCase):
                         f"Request for resolution {resolution} rejected - the resolution must be between "
                         f"{MINIMUM_RESOLUTION} and {MAXIMUM_RESOLUTION} inclusively.",
                         400,
+                        {"Access-Control-Allow-Origin": "*"},
                     ),
                 )
 
@@ -106,7 +118,8 @@ class TestMain(unittest.TestCase):
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": mock_elevations},
-            }
+            },
+            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()
@@ -170,7 +183,8 @@ class TestMain(unittest.TestCase):
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": mock_elevations},
-            }
+            },
+            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()
@@ -192,7 +206,8 @@ class TestMain(unittest.TestCase):
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": {"[54.53097, 5.96836]": 1}},
-            }
+            },
+            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()

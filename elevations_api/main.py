@@ -13,7 +13,7 @@ from octue.resources.service_backends import GCPPubSubBackend
 
 
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
-ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator-private:0-2-2"
+ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0-2-4"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
@@ -21,7 +21,7 @@ SINGLE_REQUEST_CELL_LIMIT = 15
 MINIMUM_RESOLUTION = 8
 MAXIMUM_RESOLUTION = 12
 
-OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.1.json"
+OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
 OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
 
 
@@ -53,9 +53,21 @@ def get_or_request_elevations(request):
     :param flask.Request request: the request sent to the Google Cloud Function
     :return flask.Response: a response containing the cell elevations
     """
-    if request.method != "POST":
-        return "This endpoint only accepts POST requests.", 405
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "3600",
+        }
 
+        return "", 204, headers
+
+    if request.method != "POST":
+        return "This endpoint only accepts POST or OPTIONS requests.", 405, {"Access-Control-Allow-Origin": "*"}
+
+    # Set CORS headers for the main request.
+    headers = {"Access-Control-Allow-Origin": "*"}
     data = request.get_json()
 
     try:
@@ -63,7 +75,7 @@ def get_or_request_elevations(request):
     except (ValueError, H3CellError) as error:
         message = str(error)
         logger.error(message)
-        return message, 400
+        return message, 400, headers
 
     available_cells_and_elevations = _get_available_elevations_from_database(requested_cells)
     unavailable_cells = requested_cells - available_cells_and_elevations.keys()
@@ -74,7 +86,11 @@ def get_or_request_elevations(request):
         _populate_database(cells_to_populate)
 
     logger.info("Sending response.")
-    return jsonify(_format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates))
+
+    return jsonify(
+        _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates),
+        headers=headers,
+    )
 
 
 def _parse_and_validate_data(data):

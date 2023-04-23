@@ -57,6 +57,6 @@ jobs:
           entry_point: get_or_request_elevations
           secret_environment_variables: NEO4J_URI=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-uri,NEO4J_USERNAME=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-username,NEO4J_PASSWORD=${{ steps.secrets_prefix.outputs.prefix }}-neo4j-password
           https_trigger_security_level: secure_always
-          min_instances: 0
+          min_instances: 1
           max_instances: 10
           timeout: 300
