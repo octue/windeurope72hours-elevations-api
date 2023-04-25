@@ -123,12 +123,14 @@ def _parse_and_validate_data(data):
         requested_cells = set(data["h3_cells"])
 
     elif "coordinates" in data:
+        _validate_coordinates(data["coordinates"])
         requested_cells, cells_and_coordinates = _convert_coordinates_to_cells_and_validate(
             data["coordinates"],
             resolution,
         )
 
     else:
+        _validate_coordinates(data["polygon"])
         requested_cells = _get_cells_within_polygon_and_validate(data["polygon"], resolution)
 
     if not requested_cells:
@@ -249,6 +251,18 @@ def _validate_h3_cells(cells):
             raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
     logger.info("Accepted request for elevations of the H3 cells: %r.", requested_cells)
+
+
+def _validate_coordinates(coordinates, coordinates_name="coordinates"):
+    """Check that the given coordinates are not empty or invalid.
+
+    :param list(list(float, float)) coordinates: the coordinates to validate
+    :param str coordinates_name: the name to use for the coordinates in the error message
+    :raise ValueError: if the coordinates are invalid
+    :return None:
+    """
+    if len(coordinates) == 0 or any(len(coordinate) != 2 for coordinate in coordinates):
+        raise ValueError(f"The {coordinates_name} must be an iterable of iterables of length 2 and cannot be empty.")
 
 
 def _convert_coordinates_to_cells_and_validate(coordinates, resolution):

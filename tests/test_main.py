@@ -81,6 +81,40 @@ class TestMain(unittest.TestCase):
             ("1 is not a valid H3 cell - aborting request.", 400, {"Access-Control-Allow-Origin": "*"}),
         )
 
+    def test_error_raised_if_coordinates_invalid(self):
+        """Test that an error is raised if the coordinates are invalid."""
+        for invalid_coordinates in ([], [[]], [[1, 2], [3]]):
+            with self.subTest(coordinates=invalid_coordinates):
+                data = {"coordinates": invalid_coordinates}
+                request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+                response = get_or_request_elevations(request)
+
+                self.assertEqual(
+                    response,
+                    (
+                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
+                        400,
+                        {"Access-Control-Allow-Origin": "*"},
+                    ),
+                )
+
+    def test_error_raised_if_polygon_invalid(self):
+        """Test that an error is raised if the polygon coordinates are invalid."""
+        for invalid_coordinates in ([], [[]], [[1, 2], [3]]):
+            with self.subTest(coordinates=invalid_coordinates):
+                data = {"polygon": invalid_coordinates}
+                request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+                response = get_or_request_elevations(request)
+
+                self.assertEqual(
+                    response,
+                    (
+                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
+                        400,
+                        {"Access-Control-Allow-Origin": "*"},
+                    ),
+                )
+
     def test_error_returned_if_resolution_outside_allowed_range(self):
         """Test that an error response is returned if the requested resolution is above the maximum resolution or below
         the minimum resolution.
