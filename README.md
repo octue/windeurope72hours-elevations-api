@@ -1,5 +1,7 @@
 # WindEurope 72 Hours Challenge: Octue Elevations API
 
+This is part of the 72 Hours of Digitalisation at WindEurope challenge - [read more here!](https://medium.com/@thclark/72-hours-of-digitalisation-at-windeurope-7aa786be729d)
+
 ## Summary
 
 A serverless REST API that returns the ground elevations of the coordinates sent to it. The API accepts any of the
