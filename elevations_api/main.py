@@ -195,7 +195,7 @@ def _populate_database(cells):
     :param iter(int) cells: the cells to request database population for
     :return None:
     """
-    logger.info("Requesting database population for %d cells.", len(cells))
+    logger.info("Requesting database population for cells %r.", cells)
     service = Service(backend=GCPPubSubBackend(project_name=ELEVATIONS_POPULATOR_PROJECT))
     service.ask(service_id=ELEVATIONS_POPULATOR_SERVICE_SRUID, input_values={"h3_cells": list(cells)})
 
