@@ -4,7 +4,6 @@ import os
 
 import functions_framework
 from cachetools import TTLCache
-from flask import jsonify
 from h3 import H3CellError
 from h3.api.basic_int import geo_to_h3, h3_is_valid, polyfill
 from neo4j import GraphDatabase
@@ -87,9 +86,10 @@ def get_or_request_elevations(request):
 
     logger.info("Sending response.")
 
-    return jsonify(
+    return (
         _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates),
-        headers=headers,
+        200,
+        headers,
     )
 
 
