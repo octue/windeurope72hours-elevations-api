@@ -12,7 +12,7 @@ from octue.resources.service_backends import GCPPubSubBackend
 
 
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
-ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0-2-4"
+ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0-2-5"
 DATABASE_NAME = "neo4j"
 DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
