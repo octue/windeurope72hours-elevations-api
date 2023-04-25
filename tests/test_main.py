@@ -21,6 +21,7 @@ class TestMain(unittest.TestCase):
         """Test that an error response is returned if the request method is not `POST`."""
         request = Mock(method="GET")
         response = get_or_request_elevations(request)
+
         self.assertEqual(
             response,
             ("This endpoint only accepts POST or OPTIONS requests.", 405, {"Access-Control-Allow-Origin": "*"}),
@@ -80,6 +81,40 @@ class TestMain(unittest.TestCase):
             ("1 is not a valid H3 cell - aborting request.", 400, {"Access-Control-Allow-Origin": "*"}),
         )
 
+    def test_error_raised_if_coordinates_invalid(self):
+        """Test that an error is raised if the coordinates are invalid."""
+        for invalid_coordinates in ([], [[]], [[1, 2], [3]]):
+            with self.subTest(coordinates=invalid_coordinates):
+                data = {"coordinates": invalid_coordinates}
+                request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+                response = get_or_request_elevations(request)
+
+                self.assertEqual(
+                    response,
+                    (
+                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
+                        400,
+                        {"Access-Control-Allow-Origin": "*"},
+                    ),
+                )
+
+    def test_error_raised_if_polygon_invalid(self):
+        """Test that an error is raised if the polygon coordinates are invalid."""
+        for invalid_coordinates in ([], [[]], [[1, 2], [3]]):
+            with self.subTest(coordinates=invalid_coordinates):
+                data = {"polygon": invalid_coordinates}
+                request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+                response = get_or_request_elevations(request)
+
+                self.assertEqual(
+                    response,
+                    (
+                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
+                        400,
+                        {"Access-Control-Allow-Origin": "*"},
+                    ),
+                )
+
     def test_error_returned_if_resolution_outside_allowed_range(self):
         """Test that an error response is returned if the requested resolution is above the maximum resolution or below
         the minimum resolution.
@@ -109,17 +144,15 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify") as mock_jsonify:
-                    get_or_request_elevations(request)
+                response = get_or_request_elevations(request)
 
-        mock_jsonify.assert_called_with(
+        self.assertEqual(
+            response[0],
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": mock_elevations},
             },
-            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()
@@ -133,13 +166,10 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify") as mock_jsonify:
-                    get_or_request_elevations(request)
+                response = get_or_request_elevations(request)
 
-        response = mock_jsonify.call_args.args[0]
-        self.assertEqual(response["data"]["elevations"], {})
-        self.assertEqual(set(response["data"]["later"]), {630949280935159295, 630949280220393983})
+        self.assertEqual(response[0]["data"]["elevations"], {})
+        self.assertEqual(set(response[0]["data"]["later"]), {630949280935159295, 630949280220393983})
         mock_populate_database.assert_called_with({630949280935159295, 630949280220393983})
 
     def test_some_cells_unavailable(self):
@@ -153,11 +183,8 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify") as mock_jsonify:
-                    get_or_request_elevations(request)
+                response = get_or_request_elevations(request)[0]
 
-        response = mock_jsonify.call_args.args[0]
         self.assertEqual(response["data"]["elevations"], mock_elevations)
         self.assertEqual(set(response["data"]["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
@@ -174,17 +201,15 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify") as mock_jsonify:
-                    get_or_request_elevations(request)
+                response = get_or_request_elevations(request)
 
-        mock_jsonify.assert_called_with(
+        self.assertEqual(
+            response[0],
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": mock_elevations},
             },
-            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()
@@ -197,17 +222,15 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify") as mock_jsonify:
-                    get_or_request_elevations(request)
+                response = get_or_request_elevations(request)
 
-        mock_jsonify.assert_called_with(
+        self.assertEqual(
+            response[0],
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
                 "data": {"elevations": {"[54.53097, 5.96836]": 1}},
             },
-            headers={"Access-Control-Allow-Origin": "*"},
         )
 
         mock_populate_database.assert_not_called()
@@ -221,9 +244,7 @@ class TestMain(unittest.TestCase):
 
         with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
-                # Mock `jsonify` to avoid needing Flask app context or test app.
-                with patch("elevations_api.main.jsonify"):
-                    get_or_request_elevations(request)
+                get_or_request_elevations(request)
 
         mock_populate_database.assert_not_called()
 
@@ -242,9 +263,7 @@ class TestMain(unittest.TestCase):
 
             with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
                 with patch("elevations_api.main._populate_database") as mock_populate_database:
-                    # Mock `jsonify` to avoid needing Flask app context or test app.
-                    with patch("elevations_api.main.jsonify"):
-                        get_or_request_elevations(request)
+                    get_or_request_elevations(request)
 
         mock_populate_database.assert_called()
 
