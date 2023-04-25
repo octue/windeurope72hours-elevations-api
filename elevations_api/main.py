@@ -14,7 +14,8 @@ from octue.resources.service_backends import GCPPubSubBackend
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
 ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0-2-5"
 DATABASE_NAME = "neo4j"
-DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
+TTL_CACHE_TIME = 3600
+APPROXIMATE_DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
 SINGLE_REQUEST_CELL_LIMIT = 15
 
 MINIMUM_RESOLUTION = 8
@@ -35,7 +36,7 @@ driver = GraphDatabase.driver(
 # process them. This avoids unnecessary computation and duplicate nodes in the database. As the database population wait
 # time is less than the alive time for a Cloud Function instance, it's ok to run this cache in instance memory rather
 # than using an external data store like Redis. Note that this isn't a substitute for rate limiting the cloud function.
-recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=DATABASE_POPULATION_WAIT_TIME)
+recently_requested_for_database_population_cache = TTLCache(maxsize=1024, ttl=TTL_CACHE_TIME)
 
 
 @functions_framework.http
@@ -219,12 +220,12 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
         if "coordinates" in data:
             later = {
                 "later": [cells_and_coordinates[cell] for cell in unavailable_cells],
-                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["coordinates"]),
             }
         else:
             later = {
                 "later": list(unavailable_cells),
-                "estimated_wait_time": DATABASE_POPULATION_WAIT_TIME,
+                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["h3_cells"]),
             }
     else:
         later = {}
