@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "windeurope72-elevations-api"
-version = "0.1.6"
+version = "0.1.5"
 description = ""
 authors = ["Marcus Lugg <marcus@octue.com>"]
 license = "MIT"
