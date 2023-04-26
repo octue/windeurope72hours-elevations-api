@@ -3,9 +3,11 @@ import logging
 import os
 
 import functions_framework
+import jsonschema
 from cachetools import TTLCache
 from h3 import H3CellError
 from h3.api.basic_int import geo_to_h3, h3_is_valid, polyfill
+from jsonschema import ValidationError
 from neo4j import GraphDatabase
 from octue.cloud.pub_sub.service import Service
 from octue.resources.service_backends import GCPPubSubBackend
@@ -21,6 +23,7 @@ SINGLE_REQUEST_CELL_LIMIT = 15
 MINIMUM_RESOLUTION = 8
 MAXIMUM_RESOLUTION = 12
 
+INPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-input/0.1.0.json"
 OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
 OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
 
@@ -72,7 +75,7 @@ def get_or_request_elevations(request):
 
     try:
         requested_cells, cells_and_coordinates = _parse_and_validate_data(data)
-    except (ValueError, H3CellError) as error:
+    except (ValueError, H3CellError, ValidationError) as error:
         message = str(error)
         logger.error(message)
         return message, 400, headers
@@ -103,12 +106,7 @@ def _parse_and_validate_data(data):
     :param dict data: the body of the request containing either the key 'h3_cells', the keys 'coordinates' and optionally 'resolution', or the keys 'polygon' and optionally 'resolution'
     :return set(int), dict(int, tuple(float, float))|None: the cell indexes to get the elevations for and, if lat/lng coordinates were the input for this request, a mapping of cell indexes to lat/lng coordinates
     """
-    if not isinstance(data, dict) or not data.keys() & {"h3_cells", "coordinates", "polygon"}:
-        raise ValueError(
-            "The body must be a JSON object containing either an 'h3_cells' field, a 'coordinates' field and optional "
-            "'resolution field', or a 'polygon' and optional 'resolution' field."
-        )
-
+    jsonschema.validate(data, {"$ref": INPUT_SCHEMA_URI})
     resolution = data.get("resolution", MAXIMUM_RESOLUTION)
 
     if resolution > MAXIMUM_RESOLUTION or resolution < MINIMUM_RESOLUTION:
@@ -120,22 +118,21 @@ def _parse_and_validate_data(data):
     cells_and_coordinates = None
 
     if "h3_cells" in data:
-        _validate_h3_cells(data["h3_cells"])
         requested_cells = set(data["h3_cells"])
+        _validate_h3_cells(requested_cells)
 
     elif "coordinates" in data:
-        _validate_coordinates(data["coordinates"])
         requested_cells, cells_and_coordinates = _convert_coordinates_to_cells_and_validate(
             data["coordinates"],
             resolution,
         )
 
     else:
-        _validate_coordinates(data["polygon"])
         requested_cells = _get_cells_within_polygon_and_validate(data["polygon"], resolution)
 
-    if not requested_cells:
-        raise ValueError("Request for zero cells rejected.")
+        # Validate that polygon is large enough to contain cells.
+        if not requested_cells:
+            raise ValueError("Request for zero cells rejected.")
 
     return requested_cells, cells_and_coordinates
 
@@ -240,30 +237,17 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
 def _validate_h3_cells(cells):
     """Check that the cell indexes correspond to valid H3 cells and that they don't exceed the cell limit.
 
-    :param list(int) cells: the cell indexes to validate
+    :param set(int) cells: the cell indexes to validate
     :raise h3.H3CellError: if any of the cell indexes are invalid
     :return None:
     """
-    requested_cells = set(cells)
-    _check_cell_limit_not_exceeded(requested_cells)
+    _check_cell_limit_not_exceeded(cells)
 
     for cell in cells:
         if not h3_is_valid(cell):
             raise H3CellError(f"{cell} is not a valid H3 cell - aborting request.")
 
-    logger.info("Accepted request for elevations of the H3 cells: %r.", requested_cells)
-
-
-def _validate_coordinates(coordinates, coordinates_name="coordinates"):
-    """Check that the given coordinates are not empty or invalid.
-
-    :param list(list(float, float)) coordinates: the coordinates to validate
-    :param str coordinates_name: the name to use for the coordinates in the error message
-    :raise ValueError: if the coordinates are invalid
-    :return None:
-    """
-    if len(coordinates) == 0 or any(len(coordinate) != 2 for coordinate in coordinates):
-        raise ValueError(f"The {coordinates_name} must be an iterable of iterables of length 2 and cannot be empty.")
+    logger.info("Accepted request for elevations of the H3 cells: %r.", cells)
 
 
 def _convert_coordinates_to_cells_and_validate(coordinates, resolution):

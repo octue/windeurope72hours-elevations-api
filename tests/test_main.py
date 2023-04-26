@@ -39,22 +39,14 @@ class TestMain(unittest.TestCase):
                 request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
                 response = get_or_request_elevations(request)
 
-                self.assertEqual(
-                    response,
-                    (
-                        "The body must be a JSON object containing either an 'h3_cells' field, a 'coordinates' field "
-                        "and optional 'resolution field', or a 'polygon' and optional 'resolution' field.",
-                        400,
-                        {"Access-Control-Allow-Origin": "*"},
-                    ),
-                )
+                self.assertEqual(response[1], 400)
 
     def test_error_returned_if_zero_cells_requested(self):
         """Test that an error is returned if zero cells are requested."""
         data = {"h3_cells": []}
         request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
         response = get_or_request_elevations(request)
-        self.assertEqual(response, ("Request for zero cells rejected.", 400, {"Access-Control-Allow-Origin": "*"}))
+        self.assertEqual(response[1], 400)
 
     def test_error_returned_if_cell_limit_exceeded(self):
         """Test that an error response is returned if the number of cells in the request exceeds the cell limit."""
@@ -88,15 +80,7 @@ class TestMain(unittest.TestCase):
                 data = {"coordinates": invalid_coordinates}
                 request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
                 response = get_or_request_elevations(request)
-
-                self.assertEqual(
-                    response,
-                    (
-                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
-                        400,
-                        {"Access-Control-Allow-Origin": "*"},
-                    ),
-                )
+                self.assertEqual(response[1], 400)
 
     def test_error_raised_if_polygon_invalid(self):
         """Test that an error is raised if the polygon coordinates are invalid."""
@@ -105,15 +89,19 @@ class TestMain(unittest.TestCase):
                 data = {"polygon": invalid_coordinates}
                 request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
                 response = get_or_request_elevations(request)
+                self.assertEqual(response[1], 400)
 
-                self.assertEqual(
-                    response,
-                    (
-                        "The coordinates must be an iterable of iterables of length 2 and cannot be empty.",
-                        400,
-                        {"Access-Control-Allow-Origin": "*"},
-                    ),
-                )
+    def test_error_raised_if_polygon_contains_no_cells(self):
+        """Test that an error is raised if the given polygon doesn't contain any cells."""
+        data = {
+            "polygon": [[54.53097, 5.96836], [54.53075, 5.96435], [54.52926, 5.96432], [54.52903, 5.96888]],
+            "resolution": 8,
+        }
+
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+        response = get_or_request_elevations(request)
+        self.assertEqual(response[0], "Request for zero cells rejected.")
+        self.assertEqual(response[1], 400)
 
     def test_error_returned_if_resolution_outside_allowed_range(self):
         """Test that an error response is returned if the requested resolution is above the maximum resolution or below
