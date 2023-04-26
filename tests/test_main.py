@@ -139,7 +139,7 @@ class TestMain(unittest.TestCase):
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": mock_elevations},
+                "data": {"elevations": {str(index): elevation for index, elevation in mock_elevations.items()}},
             },
         )
 
@@ -173,7 +173,11 @@ class TestMain(unittest.TestCase):
             with patch("elevations_api.main._populate_database") as mock_populate_database:
                 response = get_or_request_elevations(request)[0]
 
-        self.assertEqual(response["data"]["elevations"], mock_elevations)
+        self.assertEqual(
+            response["data"]["elevations"],
+            {str(index): elevation for index, elevation in mock_elevations.items()},
+        )
+
         self.assertEqual(set(response["data"]["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
 
@@ -196,7 +200,7 @@ class TestMain(unittest.TestCase):
             {
                 "schema_uri": OUTPUT_SCHEMA_URI,
                 "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": mock_elevations},
+                "data": {"elevations": {str(index): elevation for index, elevation in mock_elevations.items()}},
             },
         )
 

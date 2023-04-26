@@ -24,7 +24,7 @@ MINIMUM_RESOLUTION = 8
 MAXIMUM_RESOLUTION = 12
 
 INPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-input/0.1.0.json"
-OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.2.json"
+OUTPUT_SCHEMA_URI = "https://jsonschema.registry.octue.com/octue/h3-elevations-output/0.1.6.json"
 OUTPUT_SCHEMA_INFO_URL = "https://strands.octue.com/octue/h3-elevations-output"
 
 
@@ -90,11 +90,9 @@ def get_or_request_elevations(request):
 
     logger.info("Sending response.")
 
-    return (
-        _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates),
-        200,
-        headers,
-    )
+    response = _format_response(data, available_cells_and_elevations, unavailable_cells, cells_and_coordinates)
+    jsonschema.validate(response, {"$ref": OUTPUT_SCHEMA_URI})
+    return response, 200, headers
 
 
 def _parse_and_validate_data(data):
@@ -211,6 +209,10 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
         available_cells_and_elevations = {
             json.dumps(cells_and_coordinates[cell]): elevation
             for cell, elevation in available_cells_and_elevations.items()
+        }
+    else:
+        available_cells_and_elevations = {
+            str(index): elevation for index, elevation in available_cells_and_elevations.items()
         }
 
     if unavailable_cells:
