@@ -216,16 +216,15 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
         }
 
     if unavailable_cells:
+        estimated_wait_time = APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(unavailable_cells)
+
         if "coordinates" in data:
             later = {
                 "later": [cells_and_coordinates[cell] for cell in unavailable_cells],
-                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["coordinates"]),
+                "estimated_wait_time": estimated_wait_time,
             }
         else:
-            later = {
-                "later": list(unavailable_cells),
-                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["h3_cells"]),
-            }
+            later = {"later": list(unavailable_cells), "estimated_wait_time": estimated_wait_time}
     else:
         later = {}
 

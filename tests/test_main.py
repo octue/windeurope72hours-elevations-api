@@ -242,6 +242,34 @@ class TestWithPolygon(unittest.TestCase):
 
         mock_populate_database.assert_not_called()
 
+    def test_all_cells_unavailable(self):
+        """Test requesting elevations as a polygon when all the cells are unavailable."""
+        data = {
+            "polygon": [[54.53097, 5.96836], [54.53075, 5.96435], [54.52926, 5.96432], [54.52903, 5.96888]],
+            "resolution": 10,
+        }
+
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                response = get_or_request_elevations(request)
+
+        self.assertEqual(
+            response[0],
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {
+                    "elevations": {},
+                    "estimated_wait_time": 960,
+                    "later": [622045820847849471, 622045820847718399, 622045848952471551, 622045848952602623],
+                },
+            },
+        )
+
+        mock_populate_database.assert_called()
+
 
 class TestWithCoordinates(unittest.TestCase):
     def test_all_cells_available(self):
