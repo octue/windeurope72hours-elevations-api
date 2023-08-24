@@ -1,0 +1,12 @@
+name: check-semantic-version
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  check-semantic-version:
+    uses: octue/.github/.github/workflows/reusable-check-semantic-version.yml@main
+    with:
+      breaking_change_indicated_by: minor

@@ -216,16 +216,15 @@ def _format_response(data, available_cells_and_elevations, unavailable_cells, ce
         }
 
     if unavailable_cells:
+        estimated_wait_time = APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(unavailable_cells)
+
         if "coordinates" in data:
             later = {
                 "later": [cells_and_coordinates[cell] for cell in unavailable_cells],
-                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["coordinates"]),
+                "estimated_wait_time": estimated_wait_time,
             }
         else:
-            later = {
-                "later": list(unavailable_cells),
-                "estimated_wait_time": APPROXIMATE_DATABASE_POPULATION_WAIT_TIME * len(data["h3_cells"]),
-            }
+            later = {"later": list(unavailable_cells), "estimated_wait_time": estimated_wait_time}
     else:
         later = {}
 
@@ -263,7 +262,7 @@ def _convert_coordinates_to_cells_and_validate(coordinates, resolution):
     :param int resolution: the resolution to convert the lat/lng coordinates to H3 cells at
     :return set(int), dict(int, tuple(float, float)): the cell indexes to get the elevations for and a mapping of cell indexes to lat/lng coordinates
     """
-    cells_and_coordinates = {geo_to_h3(lat, lng, resolution): (lat, lng) for lat, lng in coordinates}
+    cells_and_coordinates = {geo_to_h3(lat, lng, resolution): [lat, lng] for lat, lng in coordinates}
     requested_cells = set(cells_and_coordinates.keys())
     _check_cell_limit_not_exceeded(requested_cells)
     logger.info("Accepted request for elevations of the lat/lng coordinates %r.", coordinates)
