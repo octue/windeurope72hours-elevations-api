@@ -227,6 +227,29 @@ class TestMain(unittest.TestCase):
 
         mock_populate_database.assert_not_called()
 
+    def test_with_coordinates_when_cells_unavailable(self):
+        """Test requesting elevations for lat/lng coordinates when the elevations for the corresponding cells aren't yet
+        available.
+        """
+        coordinates = [[54.53097, 5.96836]]
+        data = {"coordinates": coordinates}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                response = get_or_request_elevations(request)
+
+        self.assertEqual(
+            response[0],
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": {}, "estimated_wait_time": 240, "later": coordinates},
+            },
+        )
+
+        mock_populate_database.assert_called()
+
     def test_database_population_not_re_requested_if_cell_in_ttl_cache(self):
         """Test that database population is not re-requested for a cell if it's in the TTL cache."""
         data = {"h3_cells": [630949280935159295]}
