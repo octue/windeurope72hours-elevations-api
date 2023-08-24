@@ -16,7 +16,7 @@ from elevations_api.main import (
 )
 
 
-class TestMain(unittest.TestCase):
+class TestErrors(unittest.TestCase):
     def test_error_returned_if_request_method_is_not_post(self):
         """Test that an error response is returned if the request method is not `POST`."""
         request = Mock(method="GET")
@@ -122,6 +122,8 @@ class TestMain(unittest.TestCase):
                     ),
                 )
 
+
+class TestWithH3Cells(unittest.TestCase):
     def test_all_cells_available(self):
         """Test that, when all the input cells already have elevations in the database, database population is not
         requested and the response just contains their elevations.
@@ -181,75 +183,6 @@ class TestMain(unittest.TestCase):
         self.assertEqual(set(response["data"]["later"]), {630949280220402687, 630949280220390399})
         mock_populate_database.assert_called_with({630949280220402687, 630949280220390399})
 
-    def test_with_polygon(self):
-        """Test requesting elevations as a polygon."""
-        data = {
-            "polygon": [[54.53097, 5.96836], [54.53075, 5.96435], [54.52926, 5.96432], [54.52903, 5.96888]],
-            "resolution": 10,
-        }
-
-        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
-        mock_elevations = {622045820847849471: 1, 622045820847718399: 2, 622045848952471551: 3, 622045848952602623: 4}
-
-        with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
-            with patch("elevations_api.main._populate_database") as mock_populate_database:
-                response = get_or_request_elevations(request)
-
-        self.assertEqual(
-            response[0],
-            {
-                "schema_uri": OUTPUT_SCHEMA_URI,
-                "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": {str(index): elevation for index, elevation in mock_elevations.items()}},
-            },
-        )
-
-        mock_populate_database.assert_not_called()
-
-    def test_with_coordinates(self):
-        """Test requesting elevations for lat/lng coordinates."""
-        data = {"coordinates": [[54.53097, 5.96836]]}
-        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
-        mock_elevations = {631053048207246335: 1}
-
-        with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
-            with patch("elevations_api.main._populate_database") as mock_populate_database:
-                response = get_or_request_elevations(request)
-
-        self.assertEqual(
-            response[0],
-            {
-                "schema_uri": OUTPUT_SCHEMA_URI,
-                "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": {"[54.53097, 5.96836]": 1}},
-            },
-        )
-
-        mock_populate_database.assert_not_called()
-
-    def test_with_coordinates_when_cells_unavailable(self):
-        """Test requesting elevations for lat/lng coordinates when the elevations for the corresponding cells aren't yet
-        available.
-        """
-        coordinates = [[54.53097, 5.96836]]
-        data = {"coordinates": coordinates}
-        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
-
-        with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
-            with patch("elevations_api.main._populate_database") as mock_populate_database:
-                response = get_or_request_elevations(request)
-
-        self.assertEqual(
-            response[0],
-            {
-                "schema_uri": OUTPUT_SCHEMA_URI,
-                "schema_info": OUTPUT_SCHEMA_INFO_URL,
-                "data": {"elevations": {}, "estimated_wait_time": 240, "later": coordinates},
-            },
-        )
-
-        mock_populate_database.assert_called()
-
     def test_database_population_not_re_requested_if_cell_in_ttl_cache(self):
         """Test that database population is not re-requested for a cell if it's in the TTL cache."""
         data = {"h3_cells": [630949280935159295]}
@@ -282,6 +215,81 @@ class TestMain(unittest.TestCase):
 
         mock_populate_database.assert_called()
 
+
+class TestWithPolygon(unittest.TestCase):
+    def test_all_cells_available(self):
+        """Test requesting elevations as a polygon when all the cells are available."""
+        data = {
+            "polygon": [[54.53097, 5.96836], [54.53075, 5.96435], [54.52926, 5.96432], [54.52903, 5.96888]],
+            "resolution": 10,
+        }
+
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+        mock_elevations = {622045820847849471: 1, 622045820847718399: 2, 622045848952471551: 3, 622045848952602623: 4}
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                response = get_or_request_elevations(request)
+
+        self.assertEqual(
+            response[0],
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": {str(index): elevation for index, elevation in mock_elevations.items()}},
+            },
+        )
+
+        mock_populate_database.assert_not_called()
+
+
+class TestWithCoordinates(unittest.TestCase):
+    def test_all_cells_available(self):
+        """Test requesting elevations for lat/lng coordinates when all cells are available."""
+        data = {"coordinates": [[54.53097, 5.96836]]}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+        mock_elevations = {631053048207246335: 1}
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value=mock_elevations):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                response = get_or_request_elevations(request)
+
+        self.assertEqual(
+            response[0],
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": {"[54.53097, 5.96836]": 1}},
+            },
+        )
+
+        mock_populate_database.assert_not_called()
+
+    def test_all_cells_unavailable(self):
+        """Test requesting elevations for lat/lng coordinates when the elevations for the corresponding cells aren't yet
+        available.
+        """
+        coordinates = [[54.53097, 5.96836]]
+        data = {"coordinates": coordinates}
+        request = Mock(method="POST", get_json=Mock(return_value=data), args=data)
+
+        with patch("elevations_api.main._get_available_elevations_from_database", return_value={}):
+            with patch("elevations_api.main._populate_database") as mock_populate_database:
+                response = get_or_request_elevations(request)
+
+        self.assertEqual(
+            response[0],
+            {
+                "schema_uri": OUTPUT_SCHEMA_URI,
+                "schema_info": OUTPUT_SCHEMA_INFO_URL,
+                "data": {"elevations": {}, "estimated_wait_time": 240, "later": coordinates},
+            },
+        )
+
+        mock_populate_database.assert_called()
+
+
+class TestGetAvailableCellsFromDatabase(unittest.TestCase):
     def test_get_available_elevations_from_database(self):
         """Test that a correct query is formed when getting elevations from the database."""
         with patch("neo4j._sync.driver.Session") as mock_session:
