@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "prefix=projects/406572174402/secrets/octue-elevations-populator-private-main" >> $GITHUB_OUTPUT
 
-      - uses: google-github-actions/deploy-cloud-functions@v3
+      - uses: google-github-actions/deploy-cloud-functions@v0
         with:
           name: ${{ needs.get-prefix.outputs.name_prefix }}elevations-api
           runtime: python310
