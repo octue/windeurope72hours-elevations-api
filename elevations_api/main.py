@@ -14,7 +14,7 @@ from octue.resources.service_backends import GCPPubSubBackend
 
 
 ELEVATIONS_POPULATOR_PROJECT = "windeurope72-private"
-ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0-2-5"
+ELEVATIONS_POPULATOR_SERVICE_SRUID = "octue/elevations-populator:0.2.5"
 DATABASE_NAME = "neo4j"
 TTL_CACHE_TIME = 3600
 APPROXIMATE_DATABASE_POPULATION_WAIT_TIME = 240  # 4 minutes.
